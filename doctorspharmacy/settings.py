@@ -22,6 +22,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "pharmacy",
     "widget_tweaks",
+    "whitenoise.runserver_nostatic",
+
 ]
 
 MIDDLEWARE = [

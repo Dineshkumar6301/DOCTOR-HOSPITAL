@@ -1,49 +1,7 @@
-# Node modules
-/node_modules
-
-# Compilation output
-/dist
-
-# pnpm deploy output
-/bundle
-
-# Hardhat Build Artifacts
-/artifacts
-
-# Hardhat compilation (v2) support directory
-/cache
-
-# Typechain output
-/types
-
-# Hardhat coverage reports
-/coverage
-
-
-# Environment
 .env
-
-# Django
-db.sqlite3
-media/
 staticfiles/
-
-# Python
 __pycache__/
 *.pyc
-venv/
-.venv/
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-
-.env
-db.sqlite3
-raw.json
+node_modules
 data_fixed.json
+raw.json
