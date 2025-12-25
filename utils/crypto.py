@@ -1,27 +1,25 @@
 from decimal import Decimal
 import requests
+from django.core.cache import cache
+
+BNB_CACHE_KEY = "bnb_inr_price"
+BNB_CACHE_TTL = 30  # seconds (VERY IMPORTANT)
 
 def inr_to_bnb(inr_amount: Decimal) -> Decimal:
-    """
-    Convert INR → BNB using Binance official price
-    """
+    price = cache.get(BNB_CACHE_KEY)
 
-    # BNB/USDT price
-    price_res = requests.get(
-        "https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT",
-        timeout=10
-    )
-    price_res.raise_for_status()
-    bnb_usdt = Decimal(price_res.json()["price"])
+    if not price:
+        res = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price",
+            params={"ids": "binancecoin", "vs_currencies": "inr"},
+            timeout=10
+        )
 
-    # USDT/INR price
-    inr_res = requests.get(
-        "https://api.binance.com/api/v3/ticker/price?symbol=USDTINR",
-        timeout=10
-    )
-    inr_res.raise_for_status()
-    usdt_inr = Decimal(inr_res.json()["price"])
+        data = res.json()
+        if "binancecoin" not in data:
+            raise ValueError("BNB price unavailable")
 
-    bnb_inr = bnb_usdt * usdt_inr
+        price = Decimal(str(data["binancecoin"]["inr"]))
+        cache.set(BNB_CACHE_KEY, price, BNB_CACHE_TTL)
 
-    return (inr_amount / bnb_inr).quantize(Decimal("0.00000001"))
+    return (inr_amount / price).quantize(Decimal("0.00000001"))
