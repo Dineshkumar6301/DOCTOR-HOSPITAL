@@ -1109,6 +1109,15 @@ def book_appointment(request, doctor_id):
     })
 
 
+from django.conf import settings
+
+def check_chain():
+    w3 = settings.web3
+    if w3 and w3.is_connected():
+        return w3.eth.chain_id
+    return None
+
+
 @login_required
 def confirm_appointment(request, appointment_id):
     appointment = get_object_or_404(

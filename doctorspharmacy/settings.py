@@ -113,13 +113,13 @@ from web3 import Web3
 
 WEB3_PROVIDER_URI = os.getenv("WEB3_PROVIDER_URI")
 
+web3 = None
 if WEB3_PROVIDER_URI:
     web3 = Web3(Web3.HTTPProvider(WEB3_PROVIDER_URI))
-    print("Web3 connected:", web3.is_connected())
-    print("Chain ID:", web3.eth.chain_id)
+    print("Web3 enabled")
 else:
-    web3 = None
     print("Web3 disabled")
+
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 from decouple import config
