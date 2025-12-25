@@ -121,6 +121,12 @@ else:
     print("Web3 disabled")
 
 
+import os
+
+BNB_RECEIVER_ADDRESS = os.getenv("BNB_RECEIVER_ADDRESS")
+
+
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 from decouple import config
 BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")

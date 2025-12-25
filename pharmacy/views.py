@@ -1131,7 +1131,7 @@ def confirm_appointment(request, appointment_id):
         "confirmation.html",
         {
             "appointment": appointment,
-            "service_wallet_address": settings.SERVICE_WALLET_ADDRESS,
+            "service_wallet_address": settings.BNB_RECEIVER_ADDRESS,
         }
     )
 
@@ -1219,7 +1219,7 @@ def payment_success(request):
 
         # 4️⃣ Receiver validation
         if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
-            settings.SERVICE_WALLET_ADDRESS
+            settings.BNB_RECEIVER_ADDRESS
         ):
             raise Exception("Payment sent to wrong wallet")
 
@@ -3002,7 +3002,7 @@ def checkout_view(request):
         "total_price": total_price,
         "crypto_amount": crypto_amount,
         "chain_id": settings.CHAIN_ID,
-        "service_wallet_address": settings.SERVICE_WALLET_ADDRESS,
+        "service_wallet_address": settings.BNB_RECEIVER_ADDRESS,
         "ENVIRONMENT": settings.BLOCKCHAIN_ENV,      # ✅ NEW
         "doctor": doctor,
         "patient": patient,
@@ -3051,7 +3051,7 @@ def place_order_view(request):
 
     # ✅ Receiver verification (checksum safe)
     if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
-        settings.SERVICE_WALLET_ADDRESS
+        settings.BNB_RECEIVER_ADDRESS
     ):
         return JsonResponse({"error": "Invalid receiver"}, status=400)
 
