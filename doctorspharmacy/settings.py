@@ -11,7 +11,7 @@ SECRET_KEY = os.getenv(
 
 DEBUG = True
 
-ALLOWED_HOST=("*")
+ALLOWED_HOSTS = ["doctor-hospital.onrender.com", "localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
