@@ -565,35 +565,20 @@
                 </div>
             </div>
         </section>
-       <script src="https://unpkg.com/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+    
 <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
 <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
+<script src="https://unpkg.com/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+
 <script>
-const ENV = "{{ ENVIRONMENT }}";
 const SERVICE_WALLET = "{{ service_wallet_address }}";
-const CHAIN_ID = Number("{{ chain_id }}");
-const AMOUNT = Number("{{ crypto_amount }}").toFixed(6);
+const CHAIN_ID = Number("{{ chain_id }}"); // 56
+const AMOUNT = "{{ crypto_amount }}";      // string
 const CSRF_TOKEN = "{{ csrf_token }}";
 
-const cartItems = {{ cart_items_json|safe }};
-document.getElementById("cartDataInput").value = JSON.stringify(cartItems);
-
-let web3Modal = null;
-
-if (ENV === "MAINNET") {
-    web3Modal = new Web3Modal.default({
-        cacheProvider: false,
-        providerOptions: {
-            walletconnect: {
-                package: WalletConnectProvider,
-                options: {
-                    rpc: { 56: "https://bsc-dataseed.binance.org/" }
-                }
-            }
-        }
-    });
-}
+document.getElementById("cartDataInput").value =
+    JSON.stringify({{ cart_items_json|safe }});
 
 async function switchToBSC() {
     try {
@@ -620,42 +605,28 @@ async function switchToBSC() {
     }
 }
 
-document.getElementById("payBtn").onclick = async () => {
+document.getElementById("payBtn").addEventListener("click", async () => {
     try {
-        if (!SERVICE_WALLET || SERVICE_WALLET.length !== 42) {
-            alert("Receiver wallet not configured");
-            return;
-        }
-
-        let provider;
-        if (ENV === "LOCAL") {
-            provider = new ethers.BrowserProvider(window.ethereum);
-        } else {
-            const instance = await web3Modal.connect();
-            provider = new ethers.BrowserProvider(instance);
-        }
-
+        const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const network = await provider.getNetwork();
 
         if (Number(network.chainId) !== CHAIN_ID) {
-            const switched = await switchToBSC();
-            if (!switched) return;
+            const ok = await switchToBSC();
+            if (!ok) return;
         }
 
-        // 🔐 GAS-SAFE BALANCE CHECK (IMPORTANT FIX)
         const balance = await provider.getBalance(await signer.getAddress());
-        const gasBuffer = ethers.parseEther("0.002"); // safe BSC gas
-        const totalNeeded = ethers.parseEther(AMOUNT).add(gasBuffer);
+        const need = ethers.parseEther(AMOUNT) + ethers.parseEther("0.002");
 
-        if (balance < totalNeeded) {
-            alert("Insufficient BNB balance (including gas fees)");
+        if (balance < need) {
+            alert("Insufficient BNB balance");
             return;
         }
 
         const tx = await signer.sendTransaction({
             to: SERVICE_WALLET,
-            value: ethers.parseEther(AMOUNT)
+            value: ethers.parseEther(AMOUNT),
         });
 
         await tx.wait(1);
@@ -667,7 +638,7 @@ document.getElementById("payBtn").onclick = async () => {
         const res = await fetch("{% url 'place_order_view' %}", {
             method: "POST",
             headers: { "X-CSRFToken": CSRF_TOKEN },
-            body: formData
+            body: formData,
         });
 
         const data = await res.json();
@@ -678,11 +649,9 @@ document.getElementById("payBtn").onclick = async () => {
         }
 
     } catch (e) {
-        console.error("TX ERROR:", e);
-        if (e.code === 4001) return; // user cancelled
-        alert(e.message || "Payment failed");
+        if (e.code !== 4001) alert("Payment failed");
     }
-};
+});
 </script>
 
 

@@ -3121,6 +3121,13 @@ def place_order_view(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request"}, status=400)
 
+    # 🔒 HARDENING #1: session guard
+    if not request.session.get("locked_bnb") or not request.session.get("locked_inr"):
+        return JsonResponse(
+            {"error": "Session expired. Please checkout again."},
+            status=400,
+        )
+
     tx_hash = request.POST.get("tx_hash")
     if not tx_hash:
         return JsonResponse({"error": "Missing transaction hash"}, status=400)
@@ -3134,7 +3141,7 @@ def place_order_view(request):
     if not w3.is_connected():
         return JsonResponse({"error": "Blockchain unavailable"}, status=500)
 
-    # ✅ Correct network check
+    # ✅ Network check
     if int(w3.eth.chain_id) != int(settings.CHAIN_ID):
         return JsonResponse({"error": "Wrong network"}, status=400)
 
@@ -3148,20 +3155,19 @@ def place_order_view(request):
 
     tx = w3.eth.get_transaction(tx_hash)
 
-    # ✅ Receiver verification (checksum safe)
+    # ✅ Receiver verification
     if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
         settings.BNB_RECEIVER_ADDRESS
     ):
         return JsonResponse({"error": "Invalid receiver"}, status=400)
 
-    expected_bnb = Decimal(request.session.get("locked_bnb"))
-    total_price = Decimal(request.session.get("locked_inr"))
-
+    expected_bnb = Decimal(request.session["locked_bnb"])
+    total_price = Decimal(request.session["locked_inr"])
     paid_bnb = Decimal(Web3.from_wei(tx["value"], "ether"))
 
+    # ✅ 1% tolerance
     if paid_bnb < expected_bnb * Decimal("0.99"):
         return JsonResponse({"error": "Insufficient payment"}, status=400)
-
 
     clinic = Clinic.objects.first()
     if not clinic:
@@ -3178,8 +3184,12 @@ def place_order_view(request):
         tx_hash=tx_hash,
         user_wallet_address=request.POST.get("user_wallet_address"),
         cart_data=json.loads(request.POST.get("cart_data")),
-        status="PENDING"
+        status="PENDING",
     )
+
+    # 🔒 HARDENING #2: clear session locks
+    request.session.pop("locked_bnb", None)
+    request.session.pop("locked_inr", None)
 
     CartItem.objects.filter(cart__user=request.user).delete()
 

@@ -135,10 +135,18 @@ from decouple import config
 
 
 BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV")
+from decouple import config
+from web3 import Web3
+
+BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")
 
 if BLOCKCHAIN_ENV == "MAINNET":
-    CHAIN_ID = int(config("CHAIN_ID", default=56))   # BSC Mainnet
-    WEB3_RPC_URL = config("WEB3_RPC_URL")
+    CHAIN_ID = int(config("CHAIN_ID", default=56))  # BSC Mainnet
+    WEB3_RPC_URL = config("WEB3_RPC_URL", default=None)
+
+    if not WEB3_RPC_URL:
+        raise RuntimeError("WEB3_RPC_URL must be set in MAINNET mode")
+
 else:
     CHAIN_ID = int(config("CHAIN_ID", default=31337))  # Hardhat / Local
     WEB3_RPC_URL = config(
@@ -146,4 +154,6 @@ else:
         default="http://127.0.0.1:8545"
     )
 
-BNB_RECEIVER_ADDRESS = config("BNB_RECEIVER_ADDRESS")
+BNB_RECEIVER_ADDRESS = Web3.to_checksum_address(
+    config("BNB_RECEIVER_ADDRESS")
+)
