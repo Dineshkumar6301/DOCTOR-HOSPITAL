@@ -1109,24 +1109,6 @@ def book_appointment(request, doctor_id):
     })
 
 
-
-
-try:
-    w3 = Web3(Web3.HTTPProvider(settings.WEB3_RPC_URL))
-    print(f" Web3 connected: {w3.is_connected()}")
-    print(f" Wallet address from settings: {settings.SERVICE_WALLET_ADDRESS}")
-
-    SERVICE_WALLET = Web3.to_checksum_address(settings.SERVICE_WALLET_ADDRESS)
-    print(f"Checksummed wallet: {SERVICE_WALLET}")
-    
-    MIN_AMOUNT = w3.to_wei(0.01, "ether")
-except Exception as e:
-    print(f"Web3 setup error: {e}")
-    w3 = None
-    SERVICE_WALLET = None
-    MIN_AMOUNT = None
-
-
 @login_required
 def confirm_appointment(request, appointment_id):
     appointment = get_object_or_404(
