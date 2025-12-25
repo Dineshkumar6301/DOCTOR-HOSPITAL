@@ -571,105 +571,105 @@
         <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
         <script>
-const ENV = "{{ ENVIRONMENT }}";
-const SERVICE_WALLET = "{{ service_wallet_address }}";
-const CHAIN_ID = "{{ chain_id }}";
-const AMOUNT = "{{ crypto_amount }}";
-const CSRF_TOKEN = "{{ csrf_token }}";
+        const ENV = "{{ ENVIRONMENT }}";
+        const SERVICE_WALLET = "{{ service_wallet_address }}";
+        const CHAIN_ID = "{{ chain_id }}";
+        const AMOUNT = "{{ crypto_amount }}";
+        const CSRF_TOKEN = "{{ csrf_token }}";
 
-const cartItems = {{ cart_items_json|safe }};
-document.getElementById("cartDataInput").value = JSON.stringify(cartItems);
+        const cartItems = {{ cart_items_json|safe }};
+        document.getElementById("cartDataInput").value = JSON.stringify(cartItems);
 
-let web3Modal = null;
+        let web3Modal = null;
 
-if (ENV === "MAINNET") {
-    web3Modal = new Web3Modal.default({
-        cacheProvider: false,
-        providerOptions: {
-            walletconnect: {
-                package: WalletConnectProvider,
-                options: {
-                    rpc: { 56: "https://bsc-dataseed.binance.org/" }
+        if (ENV === "MAINNET") {
+            web3Modal = new Web3Modal.default({
+                cacheProvider: false,
+                providerOptions: {
+                    walletconnect: {
+                        package: WalletConnectProvider,
+                        options: {
+                            rpc: { 56: "https://bsc-dataseed.binance.org/" }
+                        }
+                    }
                 }
+            });
+        }
+
+        async function switchToBSC() {
+            try {
+                await window.ethereum.request({
+                    method: "wallet_switchEthereumChain",
+                    params: [{ chainId: "0x38" }],
+                });
+                return true;
+            } catch (e) {
+                if (e.code === 4902) {
+                    await window.ethereum.request({
+                        method: "wallet_addEthereumChain",
+                        params: [{
+                            chainId: "0x38",
+                            chainName: "BNB Smart Chain",
+                            nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+                            rpcUrls: ["https://bsc-dataseed.binance.org/"],
+                            blockExplorerUrls: ["https://bscscan.com"],
+                        }],
+                    });
+                    return true;
+                }
+                return false;
             }
         }
-    });
-}
 
-async function switchToBSC() {
-    try {
-        await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x38" }],
-        });
-        return true;
-    } catch (e) {
-        if (e.code === 4902) {
-            await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                    chainId: "0x38",
-                    chainName: "BNB Smart Chain",
-                    nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-                    rpcUrls: ["https://bsc-dataseed.binance.org/"],
-                    blockExplorerUrls: ["https://bscscan.com"],
-                }],
-            });
-            return true;
-        }
-        return false;
-    }
-}
+        document.getElementById("payBtn").onclick = async () => {
+            try {
+                let provider;
 
-document.getElementById("payBtn").onclick = async () => {
-    try {
-        let provider;
+                if (ENV === "LOCAL") {
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                } else {
+                    const instance = await web3Modal.connect();
+                    provider = new ethers.BrowserProvider(instance);
+                }
 
-        if (ENV === "LOCAL") {
-            provider = new ethers.BrowserProvider(window.ethereum);
-        } else {
-            const instance = await web3Modal.connect();
-            provider = new ethers.BrowserProvider(instance);
-        }
+                const signer = await provider.getSigner();
+                const network = await provider.getNetwork();
 
-        const signer = await provider.getSigner();
-        const network = await provider.getNetwork();
+                if (network.chainId.toString() !== CHAIN_ID.toString()) {
+                    const switched = await switchToBSC();
+                    if (!switched) return;
+                }
 
-        if (network.chainId.toString() !== CHAIN_ID.toString()) {
-            const switched = await switchToBSC();
-            if (!switched) return;
-        }
+                const tx = await signer.sendTransaction({
+                    to: SERVICE_WALLET,
+                    value: ethers.parseEther(AMOUNT.toString())
+                });
 
-        const tx = await signer.sendTransaction({
-            to: SERVICE_WALLET,
-            value: ethers.parseEther(AMOUNT.toString())
-        });
+                await tx.wait(1);
 
-        await tx.wait(1);
+                const formData = new FormData(document.getElementById("checkoutForm"));
+                formData.append("tx_hash", tx.hash);
+                formData.append("user_wallet_address", await signer.getAddress());
 
-        const formData = new FormData(document.getElementById("checkoutForm"));
-        formData.append("tx_hash", tx.hash);
-        formData.append("user_wallet_address", await signer.getAddress());
+                const res = await fetch("{% url 'place_order_view' %}", {
+                    method: "POST",
+                    headers: { "X-CSRFToken": CSRF_TOKEN },
+                    body: formData
+                });
 
-        const res = await fetch("{% url 'place_order_view' %}", {
-            method: "POST",
-            headers: { "X-CSRFToken": CSRF_TOKEN },
-            body: formData
-        });
+                const data = await res.json();
+                if (data.status === "success") {
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert(data.error);
+                }
 
-        const data = await res.json();
-        if (data.status === "success") {
-            window.location.href = data.redirect_url;
-        } else {
-            alert(data.error);
-        }
-
-    } catch (e) {
-        if (e.code === 4001) return;
-        alert("Payment failed. Please try again.");
-    }
-};
-</script>
+            } catch (e) {
+                if (e.code === 4001) return;
+                alert("Payment failed. Please try again.");
+            }
+        };
+        </script>
 
 
         <!-- Agent Section -->
