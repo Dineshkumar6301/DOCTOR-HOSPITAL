@@ -1170,7 +1170,7 @@ def payment_success(request):
     appointment = None
 
     try:
-        # 1️⃣ Parse request
+        
         data = json.loads(request.body)
         tx_hash = data.get("tx_hash")
         appointment_id = data.get("appointment_id")
@@ -1181,17 +1181,14 @@ def payment_success(request):
                 "error": "Missing transaction data"
             })
 
-        # 2️⃣ Fetch appointment
         appointment = Appointment.objects.get(id=appointment_id)
 
-        # ✅ Idempotency (already paid)
         if appointment.payment_status == "paid":
             return JsonResponse({
                 "status": "success",
                 "redirect_url": reverse("home")
             })
 
-        # 🔐 Replay attack protection
         if Appointment.objects.filter(
             blockchain_tx_hash=tx_hash
         ).exclude(id=appointment.id).exists():
@@ -1200,7 +1197,6 @@ def payment_success(request):
                 "error": "Duplicate transaction"
             })
 
-        # 3️⃣ Web3 setup
         w3 = Web3(Web3.HTTPProvider(settings.WEB3_RPC_URL))
         if not w3.is_connected():
             raise Exception("Blockchain not connected")
@@ -1217,37 +1213,31 @@ def payment_success(request):
         if not tx.get("to"):
             raise Exception("Transaction has no recipient")
 
-        # 4️⃣ Receiver validation
         if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
             settings.BNB_RECEIVER_ADDRESS
         ):
             raise Exception("Payment sent to wrong wallet")
 
-        # 5️⃣ Amount validation
         expected_inr = Decimal(appointment.total_amount)
         expected_crypto = inr_to_bnb(expected_inr)
         expected_wei = w3.to_wei(expected_crypto, "ether")
         paid_wei = tx["value"]
 
-        # Skip strict amount check in LOCAL (Hardhat)
         if settings.BLOCKCHAIN_ENV != "LOCAL":
             if paid_wei < int(expected_wei * Decimal("0.99")):
                 raise Exception("Insufficient payment amount")
 
-        # 6️⃣ Mark appointment paid
         appointment.payment_status = "paid"
         appointment.status = "Confirmed"
         appointment.blockchain_status = "success"
         appointment.blockchain_tx_hash = tx_hash
         appointment.user_wallet_address = tx["from"]
 
-        # Online appointment → video link
         if appointment.appointment_mode == "online":
             appointment.video_link = f"https://meet.jit.si/appointment-{appointment.id}"
 
         appointment.save()
 
-        # 7️⃣ Emails
         appointment_time = appointment.appointment_datetime.strftime("%Y-%m-%d %H:%M")
 
         send_mail(
@@ -1279,7 +1269,7 @@ def payment_success(request):
             fail_silently=True,
         )
 
-        # 8️⃣ SUCCESS → FRONTEND REDIRECTS TO HOME
+        
         return JsonResponse({
             "status": "success",
             "redirect_url": reverse("home")
@@ -2996,7 +2986,6 @@ def checkout_view(request):
 
     crypto_amount = inr_to_bnb(total_price)
 
-    # 🔒 HARDENING: lock price in session
     request.session["locked_bnb"] = str(crypto_amount)
     request.session["locked_inr"] = str(total_price)
 
@@ -3028,8 +3017,6 @@ import json
 def place_order_view(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request"}, status=400)
-
-    # 🔒 HARDENING #1: session guard
     if not request.session.get("locked_bnb") or not request.session.get("locked_inr"):
         return JsonResponse(
             {"error": "Session expired. Please checkout again."},
@@ -3039,8 +3026,6 @@ def place_order_view(request):
     tx_hash = request.POST.get("tx_hash")
     if not tx_hash:
         return JsonResponse({"error": "Missing transaction hash"}, status=400)
-
-    # 🔒 Anti-replay
     if Booking.objects.filter(tx_hash=tx_hash).exists():
         return JsonResponse({"error": "Duplicate transaction"}, status=400)
 
@@ -3049,7 +3034,6 @@ def place_order_view(request):
     if not w3.is_connected():
         return JsonResponse({"error": "Blockchain unavailable"}, status=500)
 
-    # ✅ Network check
     if int(w3.eth.chain_id) != int(settings.CHAIN_ID):
         return JsonResponse({"error": "Wrong network"}, status=400)
 
@@ -3063,7 +3047,6 @@ def place_order_view(request):
 
     tx = w3.eth.get_transaction(tx_hash)
 
-    # ✅ Receiver verification
     if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
         settings.BNB_RECEIVER_ADDRESS
     ):
@@ -3074,7 +3057,6 @@ def place_order_view(request):
 
     paid_bnb = Decimal(Web3.from_wei(tx["value"], "ether"))
 
-    # ✅ 1% tolerance
     if paid_bnb < expected_bnb * Decimal("0.99"):
         return JsonResponse({"error": "Insufficient payment"}, status=400)
 
@@ -3096,7 +3078,7 @@ def place_order_view(request):
         status="PENDING",
     )
 
-    # 🔒 HARDENING #2: clear session locks
+
     request.session.pop("locked_bnb", None)
     request.session.pop("locked_inr", None)
 
@@ -3121,7 +3103,7 @@ def place_order_view(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request"}, status=400)
 
-    # 🔒 HARDENING #1: session guard
+    
     if not request.session.get("locked_bnb") or not request.session.get("locked_inr"):
         return JsonResponse(
             {"error": "Session expired. Please checkout again."},
@@ -3132,7 +3114,7 @@ def place_order_view(request):
     if not tx_hash:
         return JsonResponse({"error": "Missing transaction hash"}, status=400)
 
-    # 🔒 Anti-replay
+    
     if Booking.objects.filter(tx_hash=tx_hash).exists():
         return JsonResponse({"error": "Duplicate transaction"}, status=400)
 
@@ -3141,7 +3123,6 @@ def place_order_view(request):
     if not w3.is_connected():
         return JsonResponse({"error": "Blockchain unavailable"}, status=500)
 
-    # ✅ Network check
     if int(w3.eth.chain_id) != int(settings.CHAIN_ID):
         return JsonResponse({"error": "Wrong network"}, status=400)
 
@@ -3155,7 +3136,7 @@ def place_order_view(request):
 
     tx = w3.eth.get_transaction(tx_hash)
 
-    # ✅ Receiver verification
+    
     if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
         settings.BNB_RECEIVER_ADDRESS
     ):
@@ -3165,7 +3146,7 @@ def place_order_view(request):
     total_price = Decimal(request.session["locked_inr"])
     paid_bnb = Decimal(Web3.from_wei(tx["value"], "ether"))
 
-    # ✅ 1% tolerance
+
     if paid_bnb < expected_bnb * Decimal("0.99"):
         return JsonResponse({"error": "Insufficient payment"}, status=400)
 
@@ -3187,7 +3168,7 @@ def place_order_view(request):
         status="PENDING",
     )
 
-    # 🔒 HARDENING #2: clear session locks
+    
     request.session.pop("locked_bnb", None)
     request.session.pop("locked_inr", None)
 
@@ -3206,15 +3187,13 @@ def booking_success_page(request, booking_id):
 
     booking = get_object_or_404(Booking, id=booking_id)
 
-    # ✅ ALWAYS define cart_items first
     cart_items = booking.cart_data or []
 
-    # ✅ Update status once (idempotent)
+
     if booking.status != "Booked":
         booking.status = "Booked"
         booking.save()
 
-        # Reduce product stock only once
         product_lookup = {
             p.name.lower(): p for p in Product.objects.all()
         }
@@ -3228,7 +3207,7 @@ def booking_success_page(request, booking_id):
                 product.stock_quantity -= quantity
                 product.save()
 
-    # --- Classification ---
+    
     product_names = set(
         Product.objects.values_list("name", flat=True)
     )
