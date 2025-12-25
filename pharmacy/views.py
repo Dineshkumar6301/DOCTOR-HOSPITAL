@@ -1131,7 +1131,7 @@ def confirm_appointment(request, appointment_id):
         "confirmation.html",
         {
             "appointment": appointment,
-            "service_wallet_address": settings.BNB_RECEIVER_ADDRESS,
+            "c": settings.BNB_RECEIVER_ADDRESS,
         }
     )
 
@@ -2996,19 +2996,118 @@ def checkout_view(request):
 
     crypto_amount = inr_to_bnb(total_price)
 
-    return render(request, "diagnosis/checkout.html", {
-        "cart_items": cart_items,
-        "cart_items_json": cart_items_json,          # ✅ NOT json.dumps
-        "total_price": total_price,
-        "crypto_amount": crypto_amount,
-        "chain_id": settings.CHAIN_ID,
-        "service_wallet_address": settings.BNB_RECEIVER_ADDRESS,
-        "ENVIRONMENT": settings.BLOCKCHAIN_ENV,      # ✅ NEW
-        "doctor": doctor,
-        "patient": patient,
-        "has_tests": has_tests,
-        "has_medicines": has_medicines,
-    })
+    # 🔒 HARDENING: lock price in session
+    request.session["locked_bnb"] = str(crypto_amount)
+    request.session["locked_inr"] = str(total_price)
+
+    return render(
+        request,
+        "diagnosis/checkout.html",
+        {
+            "cart_items": cart_items,
+            "cart_items_json": cart_items_json,
+            "total_price": total_price,
+            "crypto_amount": crypto_amount,
+            "chain_id": settings.CHAIN_ID,
+            "service_wallet_address": settings.BNB_RECEIVER_ADDRESS,
+            "ENVIRONMENT": settings.BLOCKCHAIN_ENV,
+            "doctor": doctor,
+            "patient": patient,
+            "has_tests": has_tests,
+            "has_medicines": has_medicines,
+        },
+    )
+
+from django.http import JsonResponse
+from django.urls import reverse
+from web3 import Web3
+from decimal import Decimal
+import json
+
+@login_required
+def place_order_view(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request"}, status=400)
+
+    # 🔒 HARDENING #1: session guard
+    if not request.session.get("locked_bnb") or not request.session.get("locked_inr"):
+        return JsonResponse(
+            {"error": "Session expired. Please checkout again."},
+            status=400,
+        )
+
+    tx_hash = request.POST.get("tx_hash")
+    if not tx_hash:
+        return JsonResponse({"error": "Missing transaction hash"}, status=400)
+
+    # 🔒 Anti-replay
+    if Booking.objects.filter(tx_hash=tx_hash).exists():
+        return JsonResponse({"error": "Duplicate transaction"}, status=400)
+
+    w3 = Web3(Web3.HTTPProvider(settings.WEB3_RPC_URL))
+
+    if not w3.is_connected():
+        return JsonResponse({"error": "Blockchain unavailable"}, status=500)
+
+    # ✅ Network check
+    if int(w3.eth.chain_id) != int(settings.CHAIN_ID):
+        return JsonResponse({"error": "Wrong network"}, status=400)
+
+    try:
+        receipt = w3.eth.get_transaction_receipt(tx_hash)
+    except Exception:
+        return JsonResponse({"error": "Transaction not found"}, status=400)
+
+    if receipt.status != 1:
+        return JsonResponse({"error": "Transaction failed"}, status=400)
+
+    tx = w3.eth.get_transaction(tx_hash)
+
+    # ✅ Receiver verification
+    if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
+        settings.BNB_RECEIVER_ADDRESS
+    ):
+        return JsonResponse({"error": "Invalid receiver"}, status=400)
+
+    expected_bnb = Decimal(request.session["locked_bnb"])
+    total_price = Decimal(request.session["locked_inr"])
+
+    paid_bnb = Decimal(Web3.from_wei(tx["value"], "ether"))
+
+    # ✅ 1% tolerance
+    if paid_bnb < expected_bnb * Decimal("0.99"):
+        return JsonResponse({"error": "Insufficient payment"}, status=400)
+
+    clinic = Clinic.objects.first()
+    if not clinic:
+        return JsonResponse({"error": "Clinic not configured"}, status=500)
+
+    booking = Booking.objects.create(
+        user=request.user,
+        clinic=clinic,
+        name=request.POST.get("name"),
+        phone=request.POST.get("phone"),
+        email=request.POST.get("email"),
+        total_price=total_price,
+        crypto_amount=paid_bnb,
+        tx_hash=tx_hash,
+        user_wallet_address=request.POST.get("user_wallet_address"),
+        cart_data=json.loads(request.POST.get("cart_data")),
+        status="PENDING",
+    )
+
+    # 🔒 HARDENING #2: clear session locks
+    request.session.pop("locked_bnb", None)
+    request.session.pop("locked_inr", None)
+
+    CartItem.objects.filter(cart__user=request.user).delete()
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "redirect_url": reverse("booking_success_page", args=[booking.id]),
+        }
+    )
 
 
 from django.http import JsonResponse
@@ -3055,13 +3154,14 @@ def place_order_view(request):
     ):
         return JsonResponse({"error": "Invalid receiver"}, status=400)
 
-    total_price = Decimal(request.POST.get("total_price"))
-    expected_bnb = inr_to_bnb(total_price)
+    expected_bnb = Decimal(request.session.get("locked_bnb"))
+    total_price = Decimal(request.session.get("locked_inr"))
+
     paid_bnb = Decimal(Web3.from_wei(tx["value"], "ether"))
 
-    # ✅ 1% tolerance (industry standard)
     if paid_bnb < expected_bnb * Decimal("0.99"):
         return JsonResponse({"error": "Insufficient payment"}, status=400)
+
 
     clinic = Clinic.objects.first()
     if not clinic:
@@ -3078,7 +3178,7 @@ def place_order_view(request):
         tx_hash=tx_hash,
         user_wallet_address=request.POST.get("user_wallet_address"),
         cart_data=json.loads(request.POST.get("cart_data")),
-        status="Booked",
+        status="PENDING"
     )
 
     CartItem.objects.filter(cart__user=request.user).delete()
