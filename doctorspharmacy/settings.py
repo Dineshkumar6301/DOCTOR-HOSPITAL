@@ -133,11 +133,17 @@ BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")
 
 from decouple import config
 
+
 BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")
 
 if BLOCKCHAIN_ENV == "MAINNET":
-    WEB3_RPC_URL = config("WEB3_RPC_URL")   # Render variable
+    CHAIN_ID = int(config("CHAIN_ID", default=56))   # BSC Mainnet
+    WEB3_RPC_URL = config("WEB3_RPC_URL")
 else:
-    WEB3_RPC_URL = config("LOCAL_WEB3_RPC_URL", default="http://127.0.0.1:8545")
+    CHAIN_ID = int(config("CHAIN_ID", default=31337))  # Hardhat / Local
+    WEB3_RPC_URL = config(
+        "LOCAL_WEB3_RPC_URL",
+        default="http://127.0.0.1:8545"
+    )
 
-
+BNB_RECEIVER_ADDRESS = config("BNB_RECEIVER_ADDRESS")
