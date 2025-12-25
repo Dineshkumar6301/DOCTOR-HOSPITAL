@@ -3,5 +3,3 @@ staticfiles/
 __pycache__/
 *.pyc
 node_modules
-data_fixed.json
-raw.json
