@@ -131,10 +131,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 from decouple import config
 BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")
 
+from decouple import config
 
+BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")
 
 if BLOCKCHAIN_ENV == "MAINNET":
-    WEB3_RPC_URL = config("MAINNET_WEB3_RPC_URL")
-    CHAIN_ID = config("MAINNET_CHAIN_ID", cast=int)
-    SERVICE_WALLET_ADDRESS = config("MAINNET_SERVICE_WALLET")
+    WEB3_RPC_URL = config("WEB3_RPC_URL")   # Render variable
+else:
+    WEB3_RPC_URL = config("LOCAL_WEB3_RPC_URL", default="http://127.0.0.1:8545")
+
 
