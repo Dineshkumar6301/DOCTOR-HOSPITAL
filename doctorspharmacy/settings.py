@@ -134,7 +134,7 @@ BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")
 from decouple import config
 
 
-BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")
+BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV")
 
 if BLOCKCHAIN_ENV == "MAINNET":
     CHAIN_ID = int(config("CHAIN_ID", default=56))   # BSC Mainnet
