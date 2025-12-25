@@ -650,13 +650,3 @@
     </script>
 </body>
 </html>
-
-
-document.getElelementById('forgotPasswordForm').addEventListener('submit',fucntion(e)){
-    const password = e.target.new_password.value;
-    const confirm =e.target.confirm_password.value;
-    if (password !== confirm ){
-        e.preventDefault();
-        alert("Passwords do not match.");
-    }
-};
