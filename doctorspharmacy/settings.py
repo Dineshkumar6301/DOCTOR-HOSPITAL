@@ -63,7 +63,7 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv()  # loads .env
+load_dotenv()
 
 DATABASES = {
     "default": dj_database_url.config(
@@ -141,14 +141,14 @@ from web3 import Web3
 BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")
 
 if BLOCKCHAIN_ENV == "MAINNET":
-    CHAIN_ID = int(config("CHAIN_ID", default=56))  # BSC Mainnet
+    CHAIN_ID = int(config("CHAIN_ID", default=56))
     WEB3_RPC_URL = config("WEB3_RPC_URL", default=None)
 
     if not WEB3_RPC_URL:
         raise RuntimeError("WEB3_RPC_URL must be set in MAINNET mode")
 
 else:
-    CHAIN_ID = int(config("CHAIN_ID", default=31337))  # Hardhat / Local
+    CHAIN_ID = int(config("CHAIN_ID", default=31337))
     WEB3_RPC_URL = config(
         "LOCAL_WEB3_RPC_URL",
         default="http://127.0.0.1:8545"
