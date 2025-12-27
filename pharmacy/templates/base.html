@@ -186,11 +186,15 @@
                         </div>
                         <div class="menu-area">
                             <!-- Mobile Navigation Toggler -->
-                            <div class="mobile-nav-toggler">
+                            <button class="mobile-nav-toggler d-lg-none"
+                                    data-bs-toggle="offcanvas"
+                                    data-bs-target="#mobileMenu"
+                                    aria-controls="mobileMenu">
                                 <i class="icon-bar"></i>
                                 <i class="icon-bar"></i>
                                 <i class="icon-bar"></i>
-                            </div>
+                            </button>
+
                             <nav class="main-menu navbar-expand-md navbar-light">
                                 <div class="collapse navbar-collapse show clearfix" id="navbarSupportedContent">
                                     <ul class="navigation clearfix">
@@ -412,30 +416,44 @@
         </header>
         <!-- main-header end -->
         <!-- Mobile Menu  -->
-        <div class="mobile-menu">
-            <div class="menu-backdrop"></div>
-            <div class="close-btn"><i class="fas fa-times"></i></div>
-            <nav class="menu-box">
-                <div class="nav-logo"><a href=""><img src="/static/assets/images/logo-2.png" alt="" title=""></a></div>
-                <div class="menu-outer"></div>
-                <div class="contact-info">
-                    <h4>Contact Info</h4>
-                    <ul>
-                        <li>Chicago 12, Melborne City, USA</li>
-                        <li><a href="tel:+8801682648101">+88 01682648101</a></li>
-                    </ul>
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu">
+            <!-- Header -->
+            <div class="offcanvas-header">
+                <a href="{% url 'home' %}">
+                    <img src="/static/assets/images/logo-2.png" alt="Docpro" width="140">
+                </a>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="offcanvas-body d-flex flex-column">
+
+                <!-- MENU (Auto-filled by your existing JS) -->
+                <div class="menu-outer mb-4">
+                    <!-- main-menu will clone here automatically -->
                 </div>
-                <div class="social-links">
-                    <ul class="clearfix">
-                        <li><a href=""><span class="fab fa-twitter"></span></a></li>
-                        <li><a href=""><span class="fab fa-facebook-square"></span></a></li>
-                        <li><a href=""><span class="fab fa-pinterest-p"></span></a></li>
-                        <li><a href=""><span class="fab fa-instagram"></span></a></li>
-                        <li><a href=""><span class="fab fa-youtube"></span></a></li>
-                    </ul>
+
+                <!-- CONTACT INFO -->
+                <div class="border-top pt-3 mt-auto text-center">
+                    <h6 class="fw-bold">Contact Info</h6>
+                    <p class="mb-1">Chicago 12, Melborne City, USA</p>
+                    <a href="tel:+8801682648101" class="fw-semibold text-decoration-none">
+                        +88 01682648101
+                    </a>
                 </div>
-            </nav>
+
+                <!-- SOCIAL ICONS -->
+                <div class="text-center mt-3">
+                    <a href="" class="me-3"><span class="fab fa-twitter"></span></a>
+                    <a href="" class="me-3"><span class="fab fa-facebook-square"></span></a>
+                    <a href="" class="me-3"><span class="fab fa-pinterest-p"></span></a>
+                    <a href="" class="me-3"><span class="fab fa-instagram"></span></a>
+                    <a href=""><span class="fab fa-youtube"></span></a>
+                </div>
+
+            </div>
         </div>
+
         <!-- End Mobile Menu -->
         <!-- banner-section -->
         <section class="banner-section style-two bg-color-1">
