@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     "widget_tweaks",
 
     "whitenoise.runserver_nostatic",
+      'cloudinary',
+    'cloudinary_storage',
 ]
 
 # --------------------------------------------------
@@ -196,3 +198,5 @@ cloudinary.config(
     api_secret=config("CLOUDINARY_API_SECRET"),
     secure=True
 )
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
