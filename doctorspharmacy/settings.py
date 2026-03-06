@@ -9,7 +9,7 @@ SECRET_KEY = os.getenv(
     "django-insecure-dpu_f9^-4%z+7%4e5b73^=t268syd_ouhm78t%=frz*yp@n9v-"
 )
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["doctor-hospital.onrender.com", "localhost", "127.0.0.1"]
 
