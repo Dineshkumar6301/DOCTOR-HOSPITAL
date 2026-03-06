@@ -448,7 +448,7 @@
                         <div class="card-body text-center">
                             <!-- Profile Image -->
                             <div class="mb-3">
-                                <img src="{% if doctor.profile_image and doctor.profile_image.name %}{{ doctor.profile_image.url }}{% else %}{% static 'assets/images/default-profile.jpg' %}{% endif %}" 
+                                <img src="{% if doctor.profile_image %}{{ doctor.profile_image.url }}{% else %}{% static 'assets/images/default-profile.jpg' %}{% endif %}" 
                                     alt="Doctor Profile" class="rounded-circle border" style="width: 100px; height: 100px; object-fit: cover;">
                             </div>
                             <!-- Name + Specialization -->
