@@ -4,14 +4,10 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-dpu_f9^-4%z+7%4e5b73^=t268syd_ouhm78t%=frz*yp@n9v-"
-)
-
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 DEBUG = False
 
-ALLOWED_HOSTS = ["https://doctor-hospital-09tj.onrender.com", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["doctor-hospital-09tj.onrender.com", "localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -61,11 +57,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 load_dotenv()
-
-import os
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
 
@@ -74,8 +68,7 @@ if ENVIRONMENT == "production":
     DATABASES = {
         "default": dj_database_url.config(
             default=os.environ.get("DATABASE_URL"),
-            conn_max_age=600,
-            ssl_require=True
+            conn_max_age=600
         )
     }
 else:
@@ -87,10 +80,8 @@ else:
     }
 
 
-
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -100,20 +91,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 AUTH_USER_MODEL = "pharmacy.User"
 
-from decouple import config
-
-AUTH_USER_MODEL = "pharmacy.User"
-
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-
-EMAIL_HOST_USER = config("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Kolkata"
@@ -134,7 +119,6 @@ else:
     print("Web3 disabled")
 
 
-import os
 
 BNB_RECEIVER_ADDRESS = os.getenv("BNB_RECEIVER_ADDRESS")
 
