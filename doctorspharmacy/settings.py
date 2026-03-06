@@ -1,6 +1,5 @@
 from pathlib import Path
 import os
-import dj_database_url
 from dotenv import load_dotenv
 from web3 import Web3
 from decouple import config
@@ -46,7 +45,9 @@ INSTALLED_APPS = [
 # --------------------------------------------------
 # MIDDLEWARE
 # --------------------------------------------------
-
+CSRF_TRUSTED_ORIGINS = [
+    "https://doctor-hospital-09tj.onrender.com"
+]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
