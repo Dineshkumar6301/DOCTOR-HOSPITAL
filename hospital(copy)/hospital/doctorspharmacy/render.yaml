@@ -1,0 +1,17 @@
+
+services:
+- type: web
+  name: HOSPITAL
+  runtime: python
+  repo: https://github.com/Dineshkumar6301/HOSPITAL
+  plan: free
+  envVars:
+  - key: ALLOWED_HOSTS
+    sync: false
+  region: oregon
+  buildCommand: pip install -r requirements.txt
+  startCommand: gunicorn doctorspharmacy.wsgi:application
+  autoDeployTrigger: commit
+  previews:
+    generation: automatic
+version: "1"
