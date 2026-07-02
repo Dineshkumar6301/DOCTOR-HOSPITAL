@@ -20,6 +20,7 @@ ALLOWED_HOSTS = [
     "doctor-hospital-09tj.onrender.com",
     "localhost",
     "127.0.0.1",
+    "doctorpro02.duckdns.org"
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
