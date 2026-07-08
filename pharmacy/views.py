@@ -70,10 +70,7 @@ def is_ajax(request):
 def home(request):
     doctor = None
     patient = None
-    blood_bank = None
     clinics = None
-    if request.user.is_authenticated:
-        blood_bank = BloodBank.objects.filter(user=request.user).first()
     if request.user.is_authenticated:
         try:
             doctor = Doctor.objects.get(user=request.user)
@@ -87,14 +84,49 @@ def home(request):
            clinics = Clinic.objects.filter(doctor__user=request.user)
         except Clinic.DoesNotExist:
             pass
+
+    doctors = Doctor.objects.filter(
+    is_available=True
+    ).order_by(
+        '-is_featured',
+        '-average_rating',
+        '-review_count'
+    )[:10]
+
+    doctor_data = []
+
+    for doc in doctors:
+        experiences = doc.experience_set.all()
+
+        exp_list = []
+        for exp in experiences:
+            duration = calculate_experience_years(exp.from_date, exp.to_date)
+            exp_list.append({
+                'hospital_name': exp.hospital_name,
+                'designation': exp.designation,
+                'from_date': exp.from_date,
+                'to_date': exp.to_date,
+                'duration': duration
+            })
+
+        doctor_data.append({
+            'doctor': doc,
+            'experiences': exp_list
+        })
     context = {
         'doctor': doctor,
         'patient': patient,  
-        'blood_bank':blood_bank,
-        'clinics':clinics
+        'clinics':clinics,
+        'doctors': doctors ,
+        'doctor_data' : doctor_data,
+        'patients_count': Patient.objects.count(),
+        'doctors_count': Doctor.objects.count(),
+        'clinics_count': Clinic.objects.count(),
+    
     }
     return render(request, 'base.html', context)
 
+    
 User = get_user_model()
 def register_view(request):
     doctor = None
