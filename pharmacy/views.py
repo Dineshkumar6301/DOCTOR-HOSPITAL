@@ -1,5 +1,5 @@
 import json
-from django.shortcuts import render, redirect, get_object_or_404 
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse ,reverse_lazy
 from django.http import JsonResponse ,HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -62,7 +62,7 @@ from web3 import Web3
 
 
 logger = logging.getLogger(__name__)
-User = get_user_model() 
+User = get_user_model()
 def is_ajax(request):
     """Helper function to check if the request is an AJAX request."""
     return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -115,18 +115,18 @@ def home(request):
         })
     context = {
         'doctor': doctor,
-        'patient': patient,  
+        'patient': patient,
         'clinics':clinics,
         'doctors': doctors ,
         'doctor_data' : doctor_data,
         'patients_count': Patient.objects.count(),
         'doctors_count': Doctor.objects.count(),
         'clinics_count': Clinic.objects.count(),
-    
+
     }
     return render(request, 'base.html', context)
 
-    
+
 User = get_user_model()
 def register_view(request):
     doctor = None
@@ -145,7 +145,7 @@ def register_view(request):
     if request.method == 'GET':
         return render(request, 'register.html', {
             'doctor': doctor,
-            'patient': patient,   
+            'patient': patient,
         })
     elif request.method == 'POST':
         try:
@@ -274,7 +274,7 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('home')
-                                                    
+
 @login_required
 def patient_dashboard_view(request):
     try:
@@ -290,7 +290,7 @@ def patient_dashboard_view(request):
     new_messages = Message.objects.filter(
         receiver_content_type=user_content_type,
         receiver_object_id=patient.id,
-        is_read=False                                                                                                                                      
+        is_read=False
     ).count()
 
     upcoming_appointments = Appointment.objects.filter(
@@ -313,7 +313,7 @@ def patient_dashboard_view(request):
     return render(request, 'patient_dashboard.html', context)
 
 @login_required
-def doctor_dashboard_view(request): 
+def doctor_dashboard_view(request):
     try:
         doctor = Doctor.objects.get(user=request.user)
     except Doctor.DoesNotExist:
@@ -329,7 +329,7 @@ def doctor_dashboard_view(request):
     appointments = Appointment.objects.filter(doctor=doctor).select_related('patient').order_by('-appointment_datetime')[:]
     patient_ids = Appointment.objects.filter(doctor=doctor).values_list('patient_id', flat=True).distinct()
     total_patients = Patient.objects.filter(id__in=patient_ids).count()
-    doctor.owned_clinics.all() 
+    doctor.owned_clinics.all()
     clinics = doctor.clinics.all()
     total_staffs = Doctor.objects.filter(clinics__in=clinics).distinct().count()
     appointment_count = Appointment.objects.filter(doctor=doctor).count()
@@ -342,7 +342,7 @@ def doctor_dashboard_view(request):
         'appointments': appointments,
         'Total_patient': total_patients,
         'total_staffs': total_staffs,
-        'appointment_count': appointment_count,   
+        'appointment_count': appointment_count,
         'clinic':clinic
     }
     return render(request, 'doctor_dashboard.html', context)
@@ -386,7 +386,7 @@ def doctor_appointment_list(request):
         'upcoming_appointments': upcoming_appointments,
         'past_appointments': past_appointments,
         'unread_messages': 0,
-        'doctor': doctor, 
+        'doctor': doctor,
     }
     return render(request, 'appointment.html', context)
 
@@ -396,7 +396,7 @@ def add_appointment(request):
         patient_name = request.POST.get('patient_name')
         email = request.POST.get('email').strip().lower()
         phone = request.POST.get('phone')
-        location = request.POST.get('location')  
+        location = request.POST.get('location')
         reason = request.POST.get('reason')
         appointment_date = request.POST.get('appointment_datetime')
         if not appointment_date:
@@ -422,7 +422,7 @@ def add_appointment(request):
                 is_available=False,
                 title="Booked slot",
                 description="Auto-created from appointment",
-            )  
+            )
         user_obj, user_created = User.objects.get_or_create(
             email=email,
             defaults={
@@ -449,7 +449,7 @@ def add_appointment(request):
         if not patient_created and patient.mobile_number != phone:
             patient.mobile_number = phone
             patient.save()
-        time_slot = TimeSlot.objects.first() 
+        time_slot = TimeSlot.objects.first()
         Appointment.objects.create(
             doctor=doctor,
             patient=patient,
@@ -538,7 +538,7 @@ def cancel_appointment(request, appointment_id):
         subject,
         message,
         settings.DEFAULT_FROM_EMAIL,
-        [appointment.patient.user.email], 
+        [appointment.patient.user.email],
         fail_silently=False,
     )
     return redirect('doctor_appointment_list')
@@ -560,7 +560,7 @@ def edit_appointment(request, appointment_id):
         if appointment_mode == 'online':
             appointment.video_link = zoom_link_input.strip() if zoom_link_input else ''
         else:
-            appointment.video_link = ''  
+            appointment.video_link = ''
 
         if appointment.patient:
             appointment.patient.location = appointment.location
@@ -687,11 +687,11 @@ def my_profile(request):
         'experience_formset': experience_formset,
         'award_formset': award_formset,
         'speciality_formset': speciality_formset,
-        'form': profile_form, 
+        'form': profile_form,
     }
     return render(request, 'my-profile.html', context)
 
-def group_time_slots(slots): 
+def group_time_slots(slots):
     days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     day_to_index = {day: i for i, day in enumerate(days_order)}
     slot_list = []
@@ -703,7 +703,7 @@ def group_time_slots(slots):
                 slot.end_time.strftime("%I:%M %p"),
                 slot.is_available
             ))
-    slot_list.sort(key=lambda x: day_to_index[x[0]])    
+    slot_list.sort(key=lambda x: day_to_index[x[0]])
     grouped = []
     i = 0
     while i < len(slot_list):
@@ -736,7 +736,7 @@ def schedule_timing_view(request):
     except Doctor.DoesNotExist:
         messages.error(request, "Doctor profile not found.")
         return redirect('doctor_profile_setup')
-    
+
     time_slots = TimeSlot.objects.filter(doctor=doctor)
     DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     def compress_days(days_list):
@@ -751,7 +751,7 @@ def schedule_timing_view(request):
         time_slot_data.append({
             'id': slot.id,
             'days': compress_days(days_list),
-            'day_of_week': slot.day_of_week, 
+            'day_of_week': slot.day_of_week,
             'start_time': slot.start_time.strftime('%H:%M'),
             'end_time': slot.end_time.strftime('%H:%M'),
             'available': slot.is_available,
@@ -761,7 +761,7 @@ def schedule_timing_view(request):
         'grouped_slots': grouped_slots,
         'time_slots': time_slot_data,
         'days': days,
-        'doctor': doctor, 
+        'doctor': doctor,
     })
 
 @login_required
@@ -795,7 +795,7 @@ def calendar_events(request):
                 "start": appt.appointment_datetime.isoformat(),
                 "end": appt.appointment_datetime.isoformat(),
                 "color": status_color,
-                "description": description, 
+                "description": description,
                 "url": appt.video_link if appt.appointment_mode == "online" and appt.video_link else "",
             })
 
@@ -819,16 +819,16 @@ def add_or_edit_time_slot(request):
         if not selected_days:
             messages.error(request, "Please select at least one day.")
             return redirect('schedule_timing')
-        if slot_id and slot_id.isdigit():  
+        if slot_id and slot_id.isdigit():
             slot = get_object_or_404(TimeSlot, pk=int(slot_id), doctor=doctor)
-            selected_days = request.POST.getlist('day_of_week')  
-            day = ', '.join(selected_days) 
+            selected_days = request.POST.getlist('day_of_week')
+            day = ', '.join(selected_days)
             slot.start_time = start_time
             slot.end_time = end_time
             slot.is_available = is_available
             slot.save()
             messages.success(request, 'Time slot updated successfully.')
-        else: 
+        else:
             for day in selected_days:
                 TimeSlot.objects.create(
                     doctor=doctor,
@@ -852,12 +852,12 @@ def delete_time_slot(request, slot_id):
     return redirect('schedule_timing')
 
 @login_required
-def my_patients(request):  
+def my_patients(request):
     try:
         doctor = Doctor.objects.get(user=request.user)
     except Doctor.DoesNotExist:
         return HttpResponse("Doctor profile not found.", status=404)
-    
+
     patients_list = Patient.objects.filter(
         Q(doctor=request.user) | Q(appointments__doctor=doctor)
     ).distinct()
@@ -872,14 +872,14 @@ def my_patients(request):
             Q(full_name__icontains=search_query)
         )
 
-    paginator = Paginator(patients_list, 10)  
+    paginator = Paginator(patients_list, 10)
     page_number = request.GET.get('page')
     patients = paginator.get_page(page_number)
 
     return render(request, 'my-patients.html', {
         'doctor': doctor,
         'patients': patients,
-        'search_query': search_query,   
+        'search_query': search_query,
     })
 
 @login_required
@@ -892,7 +892,7 @@ def add_patient(request):
         form = PatientForm(request.POST, request.FILES)
         if form.is_valid():
             patient = form.save(commit=False)
-            patient.doctor = request.user  
+            patient.doctor = request.user
             patient.save()
             messages.success(request, "Patient added successfully.")
             return redirect('my_patients')
@@ -902,7 +902,7 @@ def add_patient(request):
         form = PatientForm()
     return render(request, 'patient_form.html', {
         'doctor': doctor,
-        'form': form, 
+        'form': form,
         'action': 'Add'})
 
 @login_required
@@ -952,13 +952,13 @@ def delete_patient(request, patient_id):
 @login_required
 def add_listing(request):
     doctor = request.user.doctor_profile
-    if request.method == 'POST':   
+    if request.method == 'POST':
         DoctorListing.objects.filter(doctor=doctor).delete()
-        Service.objects.filter(doctor=doctor).delete()  
+        Service.objects.filter(doctor=doctor).delete()
         treatments = request.POST.getlist('treatment[]')
         prices = request.POST.getlist('price[]')
         for treatment, price in zip(treatments, prices):
-            if treatment and price:    
+            if treatment and price:
                 DoctorListing.objects.create(
                     doctor=doctor,
                     treatment=treatment,
@@ -975,7 +975,7 @@ def add_listing(request):
         pricing = DoctorListing.objects.filter(doctor=doctor)
         return render(request, 'add-listing.html', {
             'pricing': pricing,
-            'doctor': doctor,   
+            'doctor': doctor,
         })
 
 @login_required
@@ -1045,7 +1045,7 @@ def profile(request):
         })
     except Exception as e:
         raise e
-    
+
 @login_required
 def change_password2(request):
     patient_profile, created = Patient.objects.get_or_create(user=request.user)
@@ -1060,7 +1060,7 @@ def change_password2(request):
         else:
             request.user.set_password(new1)
             request.user.save()
-            update_session_auth_hash(request, request.user)  
+            update_session_auth_hash(request, request.user)
             messages.success(request, 'Password changed successfully.')
             return redirect('patient_dashboard')
     context = {
@@ -1075,14 +1075,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 
 @login_required(login_url='login')
-def book_appointment(request, doctor_id): 
+def book_appointment(request, doctor_id):
     doctor = get_object_or_404(Doctor, id=doctor_id)
 
     try:
         patient = request.user.patient_profile
     except Patient.DoesNotExist:
         messages.error(request, "You must be logged in as a patient to book an appointment.")
-        return redirect('login') 
+        return redirect('login')
 
     if request.method == 'POST':
         selected_date = request.GET.get('date')
@@ -1202,7 +1202,7 @@ def payment_success(request):
     appointment = None
 
     try:
-        
+
         data = json.loads(request.body)
         tx_hash = data.get("tx_hash")
         appointment_id = data.get("appointment_id")
@@ -1301,7 +1301,7 @@ def payment_success(request):
             fail_silently=True,
         )
 
-        
+
         return JsonResponse({
             "status": "success",
             "redirect_url": reverse("home")
@@ -1327,14 +1327,14 @@ def payment_success(request):
 
 @login_required
 def manage_time_slots(request):
-    doctor = request.user.doctor  
+    doctor = request.user.doctor
     if request.method == 'POST':
         form = TimeSlotForm(request.POST)
         if form.is_valid():
             timeslot = form.save(commit=False)
             timeslot.doctor = doctor
             timeslot.save()
-            return redirect('manage_time_slots')  
+            return redirect('manage_time_slots')
     else:
         form = TimeSlotForm()
     time_slots = TimeSlot.objects.filter(doctor=doctor)
@@ -1397,13 +1397,13 @@ def password_reset_confirm(request, uidb64, token):
             'uid': uidb64,
             'token': token
         })
- 
+
     messages.error(request, 'Reset link is invalid or expired.')
     return render(request, 'password_reset_confirm.html', {
         'validlink': False
     })
 
-def doctor_list_view(request): 
+def doctor_list_view(request):
     query = request.GET.get('q', '')
     specialization = request.GET.get('specialization', '')
     doctor = getattr(request.user, 'doctor_profile', None)
@@ -1413,7 +1413,7 @@ def doctor_list_view(request):
         clinic = Clinic.objects.filter(
             name__iexact=doctor.clinic_name.strip(),
             admin__is_superuser=True
-        ).first()  
+        ).first()
         if clinic and doctor not in clinic.assigned_doctors.all():
             clinic.assigned_doctors.add(doctor)
     doctors = Doctor.objects.filter(user__is_active=True)
@@ -1572,12 +1572,12 @@ def doctor_reviews(request, doctor_id):
 def submit_review(request):
     if request.method == 'POST':
         post_data = request.POST.copy()
-        post_data['rating'] = request.POST.get('rating') 
+        post_data['rating'] = request.POST.get('rating')
         form = SubmitReviewForm(post_data)
         if form.is_valid():
             review = form.save(commit=False)
             review.patient = request.user
-            review.doctor = form.cleaned_data['doctor']  
+            review.doctor = form.cleaned_data['doctor']
             review.save()
             doctor_reviews = SubmitReview.objects.filter(doctor=review.doctor)
             review.doctor.total_reviews = doctor_reviews.count()
@@ -1615,7 +1615,7 @@ def contact_us(request):
 
     return render(request, 'contact.html', {
         'doctor': doctor,
-        'patient': patient, 
+        'patient': patient,
     })
 
 def about_us(request):
@@ -1630,8 +1630,8 @@ def about_us(request):
             try:
                 patient = Patient.objects.get(user=request.user)
             except Patient.DoesNotExist:
-                patient = None 
-            
+                patient = None
+
     return render(request, 'about.html', {
         'doctor': doctor,
         'patient': patient,
@@ -1668,7 +1668,7 @@ def clinic(request, clinic_id):
         raw = raw.replace("'", "").replace('"', '')
         specifications = [s.strip() for s in raw.split(',') if s.strip()]
     else:
-        specifications = raw  
+        specifications = raw
     half = len(specifications) // 2 + len(specifications) % 2
     specs_left = specifications[:half]
     specs_right = specifications[half:]
@@ -1681,7 +1681,7 @@ def clinic(request, clinic_id):
 
     services = ClinicService.objects.filter(clinic=clinic)
     gallery_images = clinic.images.all() if hasattr(clinic, 'images') else []
-    
+
     return render(request, 'clinic.html', {
         "clinic": clinic,
         "form": ClinicForm(instance=clinic),
@@ -1708,7 +1708,7 @@ def edit_clinic(request):
             clinic = Clinic.objects.filter(assigned_doctors=doctor).first()
 
     if not clinic and (user.groups.filter(name='clinic_admin').exists() or user.is_superuser):
-        clinic = Clinic.objects.filter(admin=user).first() 
+        clinic = Clinic.objects.filter(admin=user).first()
     if not clinic:
         return JsonResponse({'success': False, 'error': 'Clinic not found or permission denied.'}, status=403)
     if request.method == 'POST':
@@ -1739,7 +1739,7 @@ def add_branch(request, clinic_id):
         if not clinic:
             clinic = Clinic.objects.filter(assigned_doctors=doctor).first()
     if not clinic and (user.groups.filter(name='clinic_admin').exists() or user.is_superuser):
-        clinic = Clinic.objects.filter(admin=user).first()  
+        clinic = Clinic.objects.filter(admin=user).first()
     if not clinic:
         return JsonResponse({'success': False, 'error': 'Clinic not found or permission denied.'}, status=403)
     if request.method == 'POST':
@@ -1762,7 +1762,7 @@ def edit_branch(request, branch_id):
         if not clinic:
             clinic = Clinic.objects.filter(assigned_doctors=doctor).first()
     if not clinic and (user.groups.filter(name='clinic_admin').exists() or user.is_superuser):
-        clinic = Clinic.objects.filter(admin=user).first() 
+        clinic = Clinic.objects.filter(admin=user).first()
     if not clinic:
         return JsonResponse({'success': False, 'error': 'Clinic not found or permission denied.'}, status=403)
     if request.method == 'POST':
@@ -1782,7 +1782,7 @@ def delete_branch(request, branch_id):
         if not clinic:
             clinic = Clinic.objects.filter(assigned_doctors=doctor).first()
     if not clinic and (user.groups.filter(name='clinic_admin').exists() or user.is_superuser):
-        clinic = Clinic.objects.filter(admin=user).first()  
+        clinic = Clinic.objects.filter(admin=user).first()
     if not clinic:
         return JsonResponse({'success': False, 'error': 'Clinic not found or permission denied.'}, status=403)
     clinic_id = branch.clinic.id
@@ -1865,11 +1865,11 @@ def update_clinic_contact(request, clinic_id):
             clinic = Clinic.objects.filter(assigned_doctors=doctor).first()
 
     if not clinic and (user.groups.filter(name='clinic_admin').exists() or user.is_superuser):
-        clinic = Clinic.objects.filter(admin=user).first() 
+        clinic = Clinic.objects.filter(admin=user).first()
 
     if not clinic:
         return JsonResponse({'success': False, 'error': 'Clinic not found or permission denied.'}, status=403)
-    
+
     if request.method == 'POST':
         clinic.working_hours = request.POST.get('working_hours', '')
         clinic.address = request.POST.get('address', '')
@@ -1895,7 +1895,7 @@ def Clinic_list(request):
             try:
                 patient = Patient.objects.get(user=request.user)
             except Patient.DoesNotExist:
-                pass  
+                pass
 
     category_id = request.GET.get('category_id')
     query = request.GET.get('q', '').strip()
@@ -1911,7 +1911,7 @@ def Clinic_list(request):
         'clinics': clinics,
         'doctor': doctor,
         'patient': patient,
-        'query': query,  
+        'query': query,
     }
     return render(request, 'Clinic_list.html', context)
 
@@ -1920,7 +1920,7 @@ def search_results(request):
         query = request.POST.get('name', '').strip()
         filter_type = request.POST.get('filter_type', 'all')
         doctors = Doctor.objects.none()
-        clinics = Clinic.objects.none()    
+        clinics = Clinic.objects.none()
         doctor_filter = (
             Q(user__first_name__icontains=query) |
             Q(user__last_name__icontains=query) |
@@ -1952,7 +1952,7 @@ def search_results(request):
 
 @login_required
 def messages_view(request):
-    doctor = request.user.doctor_profile 
+    doctor = request.user.doctor_profile
     doctor_type = ContentType.objects.get_for_model(doctor)
     messages = Message.objects.filter(
         sender_content_type=doctor_type,
@@ -1968,14 +1968,14 @@ def messages_view(request):
 def favourite_doctors(request):
     patient = get_object_or_404(Patient, user=request.user)
     favourite_list = patient.favourites.all()
-    paginator = Paginator(favourite_list, 6) 
+    paginator = Paginator(favourite_list, 6)
     page = request.GET.get('page')
     doctors = paginator.get_page(page)
 
     return render(request, 'favourite_doctors.html', {
         'doctors': doctors,
         'patient': patient,
-        'unread_messages': 0, 
+        'unread_messages': 0,
     })
 
 @login_required
@@ -1983,7 +1983,7 @@ def toggle_favourite(request, doctor_id):
     doctor = get_object_or_404(Doctor, id=doctor_id)
     favourite, created = FavouriteDoctor.objects.get_or_create(user=request.user, doctor=doctor)
     if not created:
-        favourite.delete()  
+        favourite.delete()
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @login_required
@@ -2034,7 +2034,7 @@ def send_message(request):
             data = json.loads(request.body)
             conversation_id = data.get('conversation_id')
             content = data.get('content')
-            replace_messages = data.get('replace', False)  
+            replace_messages = data.get('replace', False)
             if not content or not conversation_id:
                 return JsonResponse({'status': 'error', 'message': 'Invalid data'}, status=400)
             conversation = Conversation.objects.get(id=conversation_id)
@@ -2131,7 +2131,7 @@ def clinic_appointment_list(request):
     past_appointments = []
     upcoming_appointments = []
     for appt in all_appointments:
-        if timezone.is_naive(appt.appointment_datetime):   
+        if timezone.is_naive(appt.appointment_datetime):
             appt.appointment_datetime = timezone.make_aware(appt.appointment_datetime)
         if appt.appointment_datetime < now:
             past_appointments.append(appt)
@@ -2230,7 +2230,7 @@ class BloodBankDetailView(DetailView):
             .annotate(total_units=Sum('quantity'))
             .order_by('blood_group')
         )
-        context['blood_bank'] = bloodbank  
+        context['blood_bank'] = bloodbank
         context['blood_group_summary'] = blood_group_summary
         context['can_edit'] = user == bloodbank.user or user.is_staff
         context['clinic'] = Clinic.objects.filter(admin=self.request.user).first()
@@ -2256,7 +2256,7 @@ class BloodBankCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         if not self.request.user.is_authenticated:
             messages.error(self.request, "❌ You must be logged in to submit this form.")
-            return redirect('login') 
+            return redirect('login')
         form.instance.user = self.request.user
         return super().form_valid(form)
 
@@ -2291,7 +2291,7 @@ def blood_donation_dashboard(request, bank_id):
     blood_bank = get_object_or_404(BloodBank, id=bank_id)
     blood_groups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']
     blood_bank = BloodBank.objects.filter(user=request.user).first()
-    inventory_data = []  
+    inventory_data = []
     for group in blood_groups:
         inventory_items = BloodInventory.objects.filter(
             blood_bank=blood_bank,
@@ -2323,7 +2323,7 @@ def blood_donation_dashboard(request, bank_id):
     donor_paginator = Paginator(DonorRecord.objects.all(), 10)
     blood_page_number = request.GET.get('page')
     donor_page_number = request.GET.get('donor_page')
-    
+
     return render(request, 'bloodbank/blood_donation_dashboard.html', {
         'blood_bank': blood_bank,
         'inventory_data': inventory_data,
@@ -2466,7 +2466,7 @@ def manage_inventory(request):
 def edit_inventory(request, inventory_id):
     inventory = get_object_or_404(BloodInventory, id=inventory_id)
     if inventory.blood_bank.user != request.user:
-        return redirect('manage_inventory') 
+        return redirect('manage_inventory')
     if request.method == "POST":
         form = BloodInventoryForm(request.POST, instance=inventory)
         if form.is_valid():
@@ -2495,7 +2495,7 @@ def create_blood_request(request):
         form = BloodRequestForm(request.POST)
         if form.is_valid():
             blood_request = form.save(commit=False)
-            blood_request.requested_by = request.user 
+            blood_request.requested_by = request.user
             blood_request.save()
             messages.success(request, "✅ Blood request submitted successfully.")
             return redirect('create_blood_request')
@@ -2545,7 +2545,7 @@ def update_blood_request_status(request, pk):
 def list_blood_requests(request):
     blood_bank = BloodBank.objects.filter(user=request.user).first()
     clinic = Clinic.objects.filter(admin=request.user).first()
-    
+
     queryset = BloodRequest.objects.filter(blood_bank=blood_bank).order_by('-created_at')
     filterset = BloodRequestFilter(request.GET, queryset=queryset)
     paginator = Paginator(filterset.qs, 10)
@@ -2608,7 +2608,7 @@ def donor_submit_view(request):
                     else:
                         donor = form.save(commit=False)
                         donor.blood_bank = blood_bank
-                        donor.requested_by = request.user  
+                        donor.requested_by = request.user
                         donor.save()
                         messages.success(request, "✅ Donor information submitted successfully.")
                         return redirect('donor_submit')
@@ -2657,7 +2657,7 @@ def update_donor_status(request, donor_id):
             recipients = []
             if donor.donor_email:
                 recipients.append(donor.donor_email)
-            if donor.requested_by and donor.requested_by.email:  
+            if donor.requested_by and donor.requested_by.email:
                 recipients.append(donor.requested_by.email)
 
             if recipients:
@@ -2668,7 +2668,7 @@ def update_donor_status(request, donor_id):
                     recipients,
                     fail_silently=False,
                 )
-    
+
     return redirect('admin_donor_list')
 
 BLOOD_GROUP_ORDER = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
@@ -2676,7 +2676,7 @@ def bloodbank_dashboard(request):
     doctor = None
     patient = None
     if request.user.is_authenticated:
-        try:                
+        try:
             doctor = Doctor.objects.get(user=request.user)
         except Doctor.DoesNotExist:
                 pass
@@ -2684,7 +2684,7 @@ def bloodbank_dashboard(request):
             patient = Patient.objects.get(user=request.user)
         except Patient.DoesNotExist:
                 pass
-   
+
     inventory_data = [{'group': bg, 'units': 0} for bg in BLOOD_GROUP_ORDER]
     group_index_map = {item['group']: idx for idx, item in enumerate(inventory_data)}
     inventory = BloodInventory.objects.all()
@@ -2778,7 +2778,7 @@ def add_to_cart(request, model_name, object_id):
         if is_test:
             cart_item.quantity = 1
         else:
-            cart_item.quantity += 1 
+            cart_item.quantity += 1
 
     if is_test:
         if preferred_date:
@@ -2865,7 +2865,7 @@ def remove_from_cart(request, item_id):
         cart = Cart.objects.filter(session_key=session_key).first()
 
     if not cart:
-        return redirect('view_cart') 
+        return redirect('view_cart')
 
     item = get_object_or_404(CartItem, id=item_id, cart=cart)
     item.delete()
@@ -2947,7 +2947,7 @@ def add_category(request):
         form = TestCategoryForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('add_category') 
+            return redirect('add_category')
     else:
         form = TestCategoryForm()
 
@@ -2967,7 +2967,7 @@ def update_category(request, pk):
         category.type = request.POST.get('type')
         category.save()
         messages.success(request, 'Category updated successfully.')
-    return redirect('add_category')  
+    return redirect('add_category')
 
 def delete_category(request, pk):
     category = get_object_or_404(TestCategory, pk=pk)
@@ -3135,7 +3135,7 @@ def place_order_view(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request"}, status=400)
 
-    
+
     if not request.session.get("locked_bnb") or not request.session.get("locked_inr"):
         return JsonResponse(
             {"error": "Session expired. Please checkout again."},
@@ -3146,7 +3146,7 @@ def place_order_view(request):
     if not tx_hash:
         return JsonResponse({"error": "Missing transaction hash"}, status=400)
 
-    
+
     if Booking.objects.filter(tx_hash=tx_hash).exists():
         return JsonResponse({"error": "Duplicate transaction"}, status=400)
 
@@ -3168,7 +3168,7 @@ def place_order_view(request):
 
     tx = w3.eth.get_transaction(tx_hash)
 
-    
+
     if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
         settings.BNB_RECEIVER_ADDRESS
     ):
@@ -3200,7 +3200,7 @@ def place_order_view(request):
         status="PENDING",
     )
 
-    
+
     request.session.pop("locked_bnb", None)
     request.session.pop("locked_inr", None)
 
@@ -3239,7 +3239,7 @@ def booking_success_page(request, booking_id):
                 product.stock_quantity -= quantity
                 product.save()
 
-    
+
     product_names = set(
         Product.objects.values_list("name", flat=True)
     )
@@ -3376,7 +3376,7 @@ def clinic_bookings_view(request):
         context['medicine_orders'] = paginator.get_page(page_number)
         context['bookings'] = None
 
-    else:  
+    else:
         bookings_qs = Booking.objects.filter(clinic=clinic)
         context['lab_status_choices'] = LAB_STATUS_CHOICES
 
@@ -3405,7 +3405,7 @@ def clinic_bookings_view(request):
         paginator = Paginator(valid_bookings, 10)
         context['bookings'] = paginator.get_page(page_number)
         context['medicine_orders'] = None
-        
+
     return render(request, 'clinic/bookings.html', context)
 
 @user_passes_test(is_clinic_admin)
@@ -3606,14 +3606,14 @@ def add_medicine_category(request):
     clinic = Clinic.objects.filter(admin=request.user).first()
     blood_bank = BloodBank.objects.filter(user=request.user).first()
     if request.method == "POST":
-        form = MedicineCategoryForm(request.POST, request.FILES)  
+        form = MedicineCategoryForm(request.POST, request.FILES)
         if form.is_valid():
             category = form.save(commit=False)
-            category.clinic = clinic  
+            category.clinic = clinic
             category.save()
             return redirect('add_medicine_category')
     else:
-        form = MedicineCategoryForm() 
+        form = MedicineCategoryForm()
 
     all_categories = MedicineCategory.objects.all()
     return render(request, 'medicine/medicine_category.html', {
@@ -3659,7 +3659,7 @@ def manage_medicine(request):
     clinic = Clinic.objects.filter(admin=request.user).first()
     blood_bank = BloodBank.objects.filter(user=request.user).first()
     form = ProductForm(request.POST or None, request.FILES or None)
-    
+
     if request.method == 'POST' and form.is_valid():
         form.save()
         return redirect('manage_medicine')
@@ -3804,8 +3804,8 @@ def get_filtered_bookings(request, tab, filter_type):
                 )
                 valid_bookings.append(booking)
         return valid_bookings
-    
-    
+
+
 def export_bookings_csv(request, tab, filter_type):
     bookings = get_filtered_bookings(request, tab, filter_type)
     response = HttpResponse(content_type="text/csv")

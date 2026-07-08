@@ -3,7 +3,7 @@ services:
 - type: web
   name: HOSPITAL
   runtime: python
-  repo: https://github.com/Dineshkumar6301/HOSPITAL-
+  repo: https://github.com/Dineshkumar6301/DOCTOR-HOSPITAL
   plan: free
   envVars:
   - key: ALLOWED_HOSTS
