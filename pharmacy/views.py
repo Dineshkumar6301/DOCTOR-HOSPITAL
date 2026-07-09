@@ -691,9 +691,10 @@ def my_profile(request):
     }
     return render(request, 'my-profile.html', context)
 
-def group_time_slots(slots):
+def group_time_slots(slots): 
     days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     day_to_index = {day: i for i, day in enumerate(days_order)}
+
     slot_list = []
     for slot in slots:
         for day in slot.day_of_week.split(','):
@@ -703,12 +704,13 @@ def group_time_slots(slots):
                 slot.end_time.strftime("%I:%M %p"),
                 slot.is_available
             ))
-    slot_list.sort(key=lambda x: day_to_index[x[0]])
+    slot_list.sort(key=lambda x: day_to_index[x[0]])    
     grouped = []
     i = 0
     while i < len(slot_list):
         day_range = [slot_list[i][0]]
         start_time, end_time, available = slot_list[i][1], slot_list[i][2], slot_list[i][3]
+
         while (i + 1 < len(slot_list) and
                slot_list[i + 1][1] == start_time and
                slot_list[i + 1][2] == end_time and
@@ -720,34 +722,79 @@ def group_time_slots(slots):
             day_str = day_range[0]
         else:
             day_str = f"{day_range[0]} to {day_range[-1]}"
+
         grouped.append({
             'day_range': day_str,
             'time_range': f"{start_time} - {end_time}",
             'available': available
         })
         i += 1
+
     return grouped
 
 @login_required
+def update_appointment_status(request, appointment_id):
+
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+
+    if request.method == "POST":
+        new_status = request.POST.get("status")
+
+        if new_status in ["Pending", "Accepted", "Cancelled"]:
+            appointment.status = new_status
+            appointment.save()
+
+    return redirect(request.META.get("HTTP_REFERER"))
+
+
+@login_required
 def schedule_timing_view(request):
+
     doctor_user = request.user
+
     try:
         doctor = Doctor.objects.get(user=doctor_user)
+
     except Doctor.DoesNotExist:
         messages.error(request, "Doctor profile not found.")
         return redirect('doctor_profile_setup')
 
+
     time_slots = TimeSlot.objects.filter(doctor=doctor)
-    DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+
+    DAY_ORDER = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday'
+    ]
+
+
     def compress_days(days_list):
         ordered = [day for day in DAY_ORDER if day in days_list]
+
         if len(ordered) == 1:
             return ordered[0]
-        return f"{ordered[0]} - {ordered[-1]}"
+
+        if len(ordered) > 1:
+            return f"{ordered[0]} - {ordered[-1]}"
+
+        return ""
+
+
     grouped_slots = group_time_slots(time_slots)
+
+
     time_slot_data = []
+
     for slot in time_slots:
+
         days_list = slot.get_days_list()
+
         time_slot_data.append({
             'id': slot.id,
             'days': compress_days(days_list),
@@ -756,7 +803,19 @@ def schedule_timing_view(request):
             'end_time': slot.end_time.strftime('%H:%M'),
             'available': slot.is_available,
         })
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+
+    days = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday'
+    ]
+
+
     return render(request, 'schedule-timing.html', {
         'grouped_slots': grouped_slots,
         'time_slots': time_slot_data,
@@ -774,6 +833,7 @@ def calendar_events(request):
             status__in=["Accepted", "Pending", "Cancelled"],
             appointment_datetime__gte=date.today()
         )
+
         for appt in appointments:
             patient_name = (
                 appt.patient.user.get_full_name()
@@ -782,54 +842,64 @@ def calendar_events(request):
             )
             purpose = appt.purpose or "Checkup"
             appointment_mode = appt.appointment_mode.capitalize()
+
             status_color = {
                 "Accepted": "green",
                 "Cancelled": "red",
                 "Pending": "orange"
             }.get(appt.status, "gray")
             description = f"Mode: {appointment_mode}\nPurpose: {purpose}"
-            if appt.appointment_mode == "online" and appt.video_link:
-                description += f"\nZoom Link: {appt.video_link}"
+            if appt.appointment_mode == "online" and appt.zoom_link:
+                description += f"\nZoom Link: {appt.zoom_link}"
+
             events.append({
-                "title": f"{patient_name} - {purpose} , {appointment_mode},{appt.video_link}",
+                "title": f"{patient_name} - {purpose} , {appointment_mode},{appt.zoom_link}",
                 "start": appt.appointment_datetime.isoformat(),
                 "end": appt.appointment_datetime.isoformat(),
                 "color": status_color,
-                "description": description,
-                "url": appt.video_link if appt.appointment_mode == "online" and appt.video_link else "",
+                "description": description,  
+                "url": appt.zoom_link if appt.appointment_mode == "online" and appt.zoom_link else "", 
             })
 
     except Doctor.DoesNotExist:
         pass
+
     return JsonResponse(events, safe=False)
 
 @login_required
 def add_or_edit_time_slot(request):
-    try:
-        doctor = Doctor.objects.get(user=request.user)
-    except Doctor.DoesNotExist:
-        messages.error(request, "Doctor profile not found.")
-        return redirect('doctor_profile_setup')
-    if request.method == 'POST':
-        slot_id = request.POST.get('slot_id')
-        selected_days = request.POST.getlist('day_of_week')
-        start_time = parse_time(request.POST.get('start_time'))
-        end_time = parse_time(request.POST.get('end_time'))
-        is_available = 'is_available' in request.POST
-        if not selected_days:
-            messages.error(request, "Please select at least one day.")
-            return redirect('schedule_timing')
-        if slot_id and slot_id.isdigit():
-            slot = get_object_or_404(TimeSlot, pk=int(slot_id), doctor=doctor)
-            selected_days = request.POST.getlist('day_of_week')
-            day = ', '.join(selected_days)
-            slot.start_time = start_time
-            slot.end_time = end_time
-            slot.is_available = is_available
+
+    doctor=get_object_or_404(Doctor,user=request.user)
+
+    if request.method=="POST":
+
+        slot_id=request.POST.get("slot_id")
+
+        days=request.POST.getlist("day_of_week")
+
+        start_time=parse_time(request.POST.get("start_time"))
+        end_time=parse_time(request.POST.get("end_time"))
+
+        is_available="is_available" in request.POST
+
+
+        if slot_id:
+
+            slot=get_object_or_404(TimeSlot,id=slot_id,doctor=doctor)
+
+            slot.day_of_week=",".join(days)
+
+            slot.start_time=start_time
+            slot.end_time=end_time
+
+            slot.is_available=is_available
+
             slot.save()
-            messages.success(request, 'Time slot updated successfully.')
+
         else:
-            for day in selected_days:
+
+            for day in days:
+
                 TimeSlot.objects.create(
                     doctor=doctor,
                     day_of_week=day,
@@ -837,19 +907,17 @@ def add_or_edit_time_slot(request):
                     end_time=end_time,
                     is_available=is_available
                 )
-            messages.success(request, 'Time slot(s) added successfully.')
 
-        return redirect('schedule_timing')
-
-    messages.error(request, "Invalid request method.")
-    return redirect('schedule_timing')
+        return redirect("schedule_timing")
 
 @login_required
-def delete_time_slot(request, slot_id):
-    slot = get_object_or_404(TimeSlot, id=slot_id, doctor__user=request.user)
+def delete_time_slot(request,slot_id):
+
+    slot=get_object_or_404(TimeSlot,id=slot_id,doctor__user=request.user)
+
     slot.delete()
-    messages.success(request, "Time slot deleted successfully.")
-    return redirect('schedule_timing')
+
+    return redirect("schedule_timing")
 
 @login_required
 def my_patients(request):
