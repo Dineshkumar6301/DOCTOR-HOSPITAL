@@ -35,8 +35,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <!-- WalletConnect + Web3Modal -->
-    <script src="https://unpkg.com/@walletconnect/web3modal@2.6.2/dist/index.umd.js"></script>
-    <script src="https://unpkg.com/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+   
 
 </head>
 <style>
@@ -263,14 +262,14 @@
                             Total: ₹{{ total_price }}
                         </h4>
 
-                        <button type="button" id="payBtn"
-                                class="btn btn-warning w-100 py-3 fs-5">
-                            💳 Pay with BNB
+                        <button type="button"
+                                id="rzp-button"
+                                class="btn btn-primary w-100 py-3 fs-5">
+                            💳 Pay with Razorpay
                         </button>
 
                         <div class="text-center mt-2 text-muted">
-                            Network: <b>BNB Smart Chain</b><br>
-                            Wallets: MetaMask • Trust Wallet • Binance • WalletConnect
+                            Secure Payment via Razorpay
                         </div>
                         </form>
                     </div>
@@ -312,94 +311,125 @@
             </div>
         </section>
     
-<script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
-<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-
-<script src="https://unpkg.com/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <script>
-const SERVICE_WALLET = "{{ service_wallet_address }}";
-const CHAIN_ID = Number("{{ chain_id }}"); // 56
-const AMOUNT = "{{ crypto_amount }}";      // string
-const CSRF_TOKEN = "{{ csrf_token }}";
+document.getElementById("rzp-button").addEventListener("click", async function () {
 
-document.getElementById("cartDataInput").value =
-    JSON.stringify({{ cart_items_json|safe }});
+    const button = document.getElementById("rzp-button");
+    button.disabled = true;
+    button.innerHTML = "Please wait...";
 
-async function switchToBSC() {
     try {
-        await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x38" }],
+
+        const form = document.getElementById("checkoutForm");
+        const formData = new FormData(form);
+
+        const response = await fetch("{% url 'create_order' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: formData
         });
-        return true;
-    } catch (e) {
-        if (e.code === 4902) {
-            await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                    chainId: "0x38",
-                    chainName: "BNB Smart Chain",
-                    nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-                    rpcUrls: ["https://bsc-dataseed.binance.org/"],
-                    blockExplorerUrls: ["https://bscscan.com"],
-                }],
-            });
-            return true;
-        }
-        return false;
-    }
-}
 
-document.getElementById("payBtn").addEventListener("click", async () => {
-    try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const network = await provider.getNetwork();
+        const data = await response.json();
 
-        if (Number(network.chainId) !== CHAIN_ID) {
-            const ok = await switchToBSC();
-            if (!ok) return;
-        }
-
-        const balance = await provider.getBalance(await signer.getAddress());
-        const need = ethers.parseEther(AMOUNT) + ethers.parseEther("0.002");
-
-        if (balance < need) {
-            alert("Insufficient BNB balance");
+        if (data.status !== "success") {
+            alert(data.error || "Unable to create order.");
+            button.disabled = false;
+            button.innerHTML = "💳 Pay with Razorpay";
             return;
         }
 
-        const tx = await signer.sendTransaction({
-            to: SERVICE_WALLET,
-            value: ethers.parseEther(AMOUNT),
+        var options = {
+
+            key: data.key,
+            amount: data.amount,
+            currency: "INR",
+            name: "Doctor Pharmacy",
+            description: "Order Payment",
+            order_id: data.order_id,
+
+            handler: async function (response) {
+
+                const formData = new FormData(document.getElementById("checkoutForm"));
+
+                formData.append("razorpay_payment_id", response.razorpay_payment_id);
+                formData.append("razorpay_order_id", response.razorpay_order_id);
+                formData.append("razorpay_signature", response.razorpay_signature);
+
+                const res = await fetch("{% url 'payment_success' %}", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": "{{ csrf_token }}"
+                    },
+                    body: formData
+                });
+
+                const result = await res.json();
+
+                if (result.status === "success") {
+                    window.location.href = result.redirect_url;
+                } else {
+                    alert(result.error || "Payment verification failed.");
+                    button.disabled = false;
+                    button.innerHTML = "💳 Pay with Razorpay";
+                }
+            },
+
+            prefill: {
+                name: document.querySelector("[name=name]").value,
+                email: document.querySelector("[name=email]").value,
+                contact: document.querySelector("[name=phone]").value
+            },
+
+            theme: {
+                color: "#3399cc"
+            },
+
+            modal: {
+                ondismiss: function () {
+                    button.disabled = false;
+                    button.innerHTML = "💳 Pay with Razorpay";
+                }
+            }
+
+        };
+
+        var rzp = new Razorpay(options);
+
+        rzp.on("payment.failed", function (response) {
+
+            console.log("Payment Failed:", response.error);
+
+            alert(
+                "Payment Failed\n\n" +
+                "Code: " + response.error.code + "\n" +
+                "Description: " + response.error.description + "\n" +
+                "Source: " + response.error.source + "\n" +
+                "Step: " + response.error.step + "\n" +
+                "Reason: " + response.error.reason
+            );
+
+            button.disabled = false;
+            button.innerHTML = "💳 Pay with Razorpay";
         });
 
-        await tx.wait(1);
-
-        const formData = new FormData(document.getElementById("checkoutForm"));
-        formData.append("tx_hash", tx.hash);
-        formData.append("user_wallet_address", await signer.getAddress());
-
-        const res = await fetch("{% url 'place_order_view' %}", {
-            method: "POST",
-            headers: { "X-CSRFToken": CSRF_TOKEN },
-            body: formData,
-        });
-
-        const data = await res.json();
-        if (data.status === "success") {
-            window.location.href = data.redirect_url;
-        } else {
-            alert(data.error);
-        }
+        rzp.open();
 
     } catch (e) {
-        if (e.code !== 4001) alert("Payment failed");
+
+        console.error(e);
+
+        alert("Something went wrong.");
+
+        button.disabled = false;
+        button.innerHTML = "💳 Pay with Razorpay";
     }
+
 });
 </script>
-
 
     
         <section class="agent-section mb-5">

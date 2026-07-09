@@ -12,13 +12,14 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = [
     "doctor-hospital-09tj.onrender.com",
     "localhost",
     "127.0.0.1",
-    "doctorpro02.duckdns.org"
+    "doctorpro02.duckdns.org",
+    
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -121,43 +122,6 @@ TIME_ZONE = "Asia/Kolkata"
 
 USE_I18N = True
 USE_TZ = True
-
-
-
-BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")
-
-WEB3_PROVIDER_URI = os.getenv("WEB3_PROVIDER_URI")
-
-web3 = None
-
-if WEB3_PROVIDER_URI:
-    web3 = Web3(Web3.HTTPProvider(WEB3_PROVIDER_URI))
-    print("Web3 enabled")
-else:
-    print("Web3 disabled")
-
-# Chain configuration
-if BLOCKCHAIN_ENV == "MAINNET":
-    CHAIN_ID = int(config("CHAIN_ID", default=56))
-    WEB3_RPC_URL = config(
-        "WEB3_RPC_URL",
-        default="https://bsc-dataseed.binance.org"
-    )
-else:
-    CHAIN_ID = int(config("CHAIN_ID", default=31337))
-    WEB3_RPC_URL = config(
-        "LOCAL_WEB3_RPC_URL",
-        default="http://127.0.0.1:8545"
-    )
-
-# Wallet address
-bnb_address = config("BNB_RECEIVER_ADDRESS", default=None)
-
-if bnb_address:
-    BNB_RECEIVER_ADDRESS = Web3.to_checksum_address(bnb_address)
-else:
-    BNB_RECEIVER_ADDRESS = None
-
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

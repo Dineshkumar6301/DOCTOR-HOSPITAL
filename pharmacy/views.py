@@ -58,7 +58,6 @@ from urllib.parse import urlparse
 import csv
 from django.http import HttpResponse
 from openpyxl import Workbook
-from web3 import Web3
 
 
 logger = logging.getLogger(__name__)
@@ -3098,6 +3097,10 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 import json
 
+from django.conf import settings
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+
 @login_required
 def checkout_view(request):
     doctor = Doctor.objects.filter(user=request.user).first()
@@ -3105,36 +3108,44 @@ def checkout_view(request):
 
     cart_items = CartItem.objects.filter(cart__user=request.user)
 
-    has_tests = any(i.content_type.model == "diagnostictest" for i in cart_items)
-    has_medicines = any(i.content_type.model == "product" for i in cart_items)
+    has_tests = any(
+        item.content_type.model == "diagnostictest"
+        for item in cart_items
+    )
+
+    has_medicines = any(
+        item.content_type.model == "product"
+        for item in cart_items
+    )
 
     total_price = 0
+
     cart_items_json = []
 
     for item in cart_items:
+
         obj = item.content_object
+
         if not obj:
             continue
 
         if item.content_type.model == "product":
-            price = getattr(obj, "discount_price", None) or obj.price
+            price = obj.discount_price or obj.price
+
         elif item.content_type.model == "diagnostictest":
             price = obj.discounted_price
+
         else:
             price = 0
 
-        total_price += price * (item.quantity or 1)
+        total_price += price * item.quantity
 
         cart_items_json.append({
             "name": obj.name,
             "quantity": item.quantity,
+            "price": float(price),
             "model": item.content_type.model,
         })
-
-    crypto_amount = inr_to_bnb(total_price)
-
-    request.session["locked_bnb"] = str(crypto_amount)
-    request.session["locked_inr"] = str(total_price)
 
     return render(
         request,
@@ -3143,275 +3154,219 @@ def checkout_view(request):
             "cart_items": cart_items,
             "cart_items_json": cart_items_json,
             "total_price": total_price,
-            "crypto_amount": crypto_amount,
-            "chain_id": settings.CHAIN_ID,
-            "service_wallet_address": settings.BNB_RECEIVER_ADDRESS,
-            "ENVIRONMENT": settings.BLOCKCHAIN_ENV,
             "doctor": doctor,
             "patient": patient,
             "has_tests": has_tests,
             "has_medicines": has_medicines,
+            "razorpay_key": settings.RAZORPAY_KEY_ID,
         },
     )
 
+import razorpay
 from django.http import JsonResponse
-from django.urls import reverse
-from web3 import Web3
-from decimal import Decimal
+from django.views.decorators.csrf import csrf_exempt
 import json
 
 @login_required
-def place_order_view(request):
+def create_order(request):
+
     if request.method != "POST":
-        return JsonResponse({"error": "Invalid request"}, status=400)
-    if not request.session.get("locked_bnb") or not request.session.get("locked_inr"):
-        return JsonResponse(
-            {"error": "Session expired. Please checkout again."},
-            status=400,
-        )
-
-    tx_hash = request.POST.get("tx_hash")
-    if not tx_hash:
-        return JsonResponse({"error": "Missing transaction hash"}, status=400)
-    if Booking.objects.filter(tx_hash=tx_hash).exists():
-        return JsonResponse({"error": "Duplicate transaction"}, status=400)
-
-    w3 = Web3(Web3.HTTPProvider(settings.WEB3_RPC_URL))
-
-    if not w3.is_connected():
-        return JsonResponse({"error": "Blockchain unavailable"}, status=500)
-
-    if int(w3.eth.chain_id) != int(settings.CHAIN_ID):
-        return JsonResponse({"error": "Wrong network"}, status=400)
-
-    try:
-        receipt = w3.eth.get_transaction_receipt(tx_hash)
-    except Exception:
-        return JsonResponse({"error": "Transaction not found"}, status=400)
-
-    if receipt.status != 1:
-        return JsonResponse({"error": "Transaction failed"}, status=400)
-
-    tx = w3.eth.get_transaction(tx_hash)
-
-    if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
-        settings.BNB_RECEIVER_ADDRESS
-    ):
-        return JsonResponse({"error": "Invalid receiver"}, status=400)
-
-    expected_bnb = Decimal(request.session["locked_bnb"])
-    total_price = Decimal(request.session["locked_inr"])
-
-    paid_bnb = Decimal(Web3.from_wei(tx["value"], "ether"))
-
-    if paid_bnb < expected_bnb * Decimal("0.99"):
-        return JsonResponse({"error": "Insufficient payment"}, status=400)
+        return JsonResponse({"status": "failed"})
 
     clinic = Clinic.objects.first()
+
     if not clinic:
-        return JsonResponse({"error": "Clinic not configured"}, status=500)
+        return JsonResponse({
+            "status":"failed",
+            "error":"Clinic not configured"
+        })
 
-    booking = Booking.objects.create(
-        user=request.user,
-        clinic=clinic,
-        name=request.POST.get("name"),
-        phone=request.POST.get("phone"),
-        email=request.POST.get("email"),
-        total_price=total_price,
-        crypto_amount=paid_bnb,
-        tx_hash=tx_hash,
-        user_wallet_address=request.POST.get("user_wallet_address"),
-        cart_data=json.loads(request.POST.get("cart_data")),
-        status="PENDING",
-    )
+    cart = Cart.objects.get(user=request.user)
+    cart_items = CartItem.objects.filter(cart=cart)
 
+    total = 0
 
-    request.session.pop("locked_bnb", None)
-    request.session.pop("locked_inr", None)
+    for item in cart_items:
 
-    CartItem.objects.filter(cart__user=request.user).delete()
+        if item.content_type.model == "product":
+            price = item.content_object.discount_price or item.content_object.price
 
-    return JsonResponse(
-        {
-            "status": "success",
-            "redirect_url": reverse("booking_success_page", args=[booking.id]),
-        }
-    )
+        elif item.content_type.model == "diagnostictest":
+            price = item.content_object.discounted_price
 
+        else:
+            price = 0
 
-from django.http import JsonResponse
-from django.urls import reverse
-from web3 import Web3
-from decimal import Decimal
-import json
+        total += price * item.quantity
 
-@login_required
-def place_order_view(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "Invalid request"}, status=400)
-
-
-    if not request.session.get("locked_bnb") or not request.session.get("locked_inr"):
-        return JsonResponse(
-            {"error": "Session expired. Please checkout again."},
-            status=400,
+    client = razorpay.Client(
+        auth=(
+            settings.RAZORPAY_KEY_ID,
+            settings.RAZORPAY_KEY_SECRET
         )
-
-    tx_hash = request.POST.get("tx_hash")
-    if not tx_hash:
-        return JsonResponse({"error": "Missing transaction hash"}, status=400)
-
-
-    if Booking.objects.filter(tx_hash=tx_hash).exists():
-        return JsonResponse({"error": "Duplicate transaction"}, status=400)
-
-    w3 = Web3(Web3.HTTPProvider(settings.WEB3_RPC_URL))
-
-    if not w3.is_connected():
-        return JsonResponse({"error": "Blockchain unavailable"}, status=500)
-
-    if int(w3.eth.chain_id) != int(settings.CHAIN_ID):
-        return JsonResponse({"error": "Wrong network"}, status=400)
-
-    try:
-        receipt = w3.eth.get_transaction_receipt(tx_hash)
-    except Exception:
-        return JsonResponse({"error": "Transaction not found"}, status=400)
-
-    if receipt.status != 1:
-        return JsonResponse({"error": "Transaction failed"}, status=400)
-
-    tx = w3.eth.get_transaction(tx_hash)
-
-
-    if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
-        settings.BNB_RECEIVER_ADDRESS
-    ):
-        return JsonResponse({"error": "Invalid receiver"}, status=400)
-
-    expected_bnb = Decimal(request.session["locked_bnb"])
-    total_price = Decimal(request.session["locked_inr"])
-    paid_bnb = Decimal(Web3.from_wei(tx["value"], "ether"))
-
-
-    if paid_bnb < expected_bnb * Decimal("0.99"):
-        return JsonResponse({"error": "Insufficient payment"}, status=400)
-
-    clinic = Clinic.objects.first()
-    if not clinic:
-        return JsonResponse({"error": "Clinic not configured"}, status=500)
-
-    booking = Booking.objects.create(
-        user=request.user,
-        clinic=clinic,
-        name=request.POST.get("name"),
-        phone=request.POST.get("phone"),
-        email=request.POST.get("email"),
-        total_price=total_price,
-        crypto_amount=paid_bnb,
-        tx_hash=tx_hash,
-        user_wallet_address=request.POST.get("user_wallet_address"),
-        cart_data=json.loads(request.POST.get("cart_data")),
-        status="PENDING",
     )
 
+    payment = client.order.create({
+        "amount": int(total * 100),
+        "currency":"INR",
+        "payment_capture":1
+    })
 
-    request.session.pop("locked_bnb", None)
-    request.session.pop("locked_inr", None)
+    print(payment)
 
-    CartItem.objects.filter(cart__user=request.user).delete()
+    request.session["rzp_order_id"] = payment["id"]
 
     return JsonResponse({
-        "status": "success",
-        "redirect_url": reverse("booking_success_page", args=[booking.id]),
+
+        "status":"success",
+        "order_id":payment["id"],
+        "amount":payment["amount"],
+        "key":settings.RAZORPAY_KEY_ID,
     })
 
 
+import json
+import razorpay
+
+from django.conf import settings
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
+
+@csrf_exempt
 @login_required
-def booking_success_page(request, booking_id):
-    doctor = Doctor.objects.filter(user=request.user).first()
-    patient = Patient.objects.filter(user=request.user).first()
+def payment_success(request):
 
-    booking = get_object_or_404(Booking, id=booking_id)
+    if request.method != "POST":
+        return JsonResponse({
+            "status":"failed"
+        })
 
-    cart_items = booking.cart_data or []
-
-
-    if booking.status != "Booked":
-        booking.status = "Booked"
-        booking.save()
-
-        product_lookup = {
-            p.name.lower(): p for p in Product.objects.all()
-        }
-
-        for item in cart_items:
-            name = item.get("name", "").strip().lower()
-            quantity = int(item.get("quantity", 1))
-
-            product = product_lookup.get(name)
-            if product and product.stock_quantity >= quantity:
-                product.stock_quantity -= quantity
-                product.save()
-
-
-    product_names = set(
-        Product.objects.values_list("name", flat=True)
-    )
-    test_names = set(
-        DiagnosticTest.objects.values_list("name", flat=True)
+    razorpay_payment_id = request.POST.get("razorpay_payment_id")
+    razorpay_order_id = request.POST.get("razorpay_order_id")
+    razorpay_signature = request.POST.get("razorpay_signature")
+    client=razorpay.Client(
+        auth=(
+            settings.RAZORPAY_KEY_ID,
+            settings.RAZORPAY_KEY_SECRET
+        )
     )
 
-    lab_tests = []
-    medicines = []
+    try:
+
+        client.utility.verify_payment_signature({
+
+            "razorpay_order_id":razorpay_order_id,
+            "razorpay_payment_id":razorpay_payment_id,
+            "razorpay_signature":razorpay_signature
+
+        })
+
+    except:
+
+        return JsonResponse({
+
+            "status":"failed",
+            "error":"Payment Verification Failed"
+
+        })
+
+    cart=Cart.objects.get(user=request.user)
+
+    cart_items=CartItem.objects.filter(cart=cart)
+
+    clinic=Clinic.objects.first()
+
+    booking=Booking.objects.create(
+
+        user=request.user,
+
+        clinic=clinic,
+
+        name=request.user.get_full_name(),
+
+        email=request.user.email,
+
+        phone=request.POST.get("phone",""),
+
+        address=request.POST.get("address",""),
+
+        preferred_date=request.POST.get("preferred_date"),
+
+        notes=request.POST.get("notes"),
+
+        total_price=0,
+
+        payment_status="Paid",
+
+        razorpay_order_id=razorpay_order_id,
+
+        razorpay_payment_id=razorpay_payment_id,
+
+        razorpay_signature=razorpay_signature,
+
+        status="Booked"
+
+    )
+
+    total=0
+
+    booking_items=[]
 
     for item in cart_items:
-        name = item.get("name", "").strip().lower()
 
-        if name in (t.lower() for t in test_names):
-            item["type"] = "lab"
-            lab_tests.append(item)
+        if item.content_type.model=="product":
 
-        elif name in (p.lower() for p in product_names):
-            item["type"] = "medicine"
-            medicines.append(item)
+            price=item.content_object.discount_price or item.content_object.price
 
         else:
-            model_name = (
-                item.get("model", "")
-                .lower()
-                .replace(" ", "")
-            )
 
-            if "test" in model_name:
-                item["type"] = "lab"
-                lab_tests.append(item)
-            else:
-                item["type"] = "medicine"
-                medicines.append(item)
+            price=item.content_object.discounted_price
 
-    return render(
-        request,
-        "diagnosis/booking_success.html",
-        {
-            "booking": booking,
-            "lab_tests": lab_tests,
-            "medicines": medicines,
-            "doctor": doctor,
-            "patient": patient,
-        },
-    )
+        total+=price*item.quantity
 
+        booking_items.append({
 
-from utils.blockchain import confirm_transaction
-def verify_pending_payments():
-    pending = Booking.objects.filter(status="PENDING")
+            "name":item.content_object.name,
 
-    for booking in pending:
-        if confirm_transaction(booking.tx_hash):
-            booking.status = "PAID"
-            booking.save()
+            "quantity":item.quantity,
 
+            "price":price,
+
+            "model":item.content_type.model
+
+        })
+
+        if item.content_type.model=="product":
+
+            product=item.content_object
+
+            product.stock_quantity-=item.quantity
+
+            product.save()
+
+    booking.total_price=total
+
+    booking.cart_data=booking_items
+
+    booking.save()
+
+    cart_items.delete()
+
+    return JsonResponse({
+
+        "status":"success",
+
+        "redirect_url":reverse(
+
+            "booking_success_page",
+
+            args=[booking.id]
+
+        )
+
+    })
 
 LAB_STATUS_CHOICES = [
     ('Booked', 'Booked'),

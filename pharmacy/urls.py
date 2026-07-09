@@ -92,8 +92,6 @@ urlpatterns = [
     path('category/delete/<int:pk>/', views.delete_category, name='delete_category'),
     path('delete-test/<int:test_id>/', views.delete_test, name='delete_test'),
     path("checkout/", views.checkout_view, name="checkout_view"),
-    path("place-order/", views.place_order_view, name="place_order_view"),
-    path('booking/success/<int:booking_id>/', views.booking_success_page, name='booking_success_page'),
     path('clinic/bookings/', views.clinic_bookings_view, name='clinic_bookings'),
     path('update-medicine-status/<int:booking_id>/', views.update_medicine_status, name='update_medicine_status'),
     path('clinic/bookings/<int:booking_id>/update/', views.update_booking_status, name='update_booking_status'),
@@ -120,7 +118,17 @@ urlpatterns = [
         name="available_slots",
     ),
     path("razorpay/order/<int:appointment_id>/", views.create_razorpay_order, name="razorpay_order"),
+    path(
+        "create-order/",
+        views.create_order,
+        name="create_order",
+    ),
 
+    path(
+        "payment-success/",
+        views.payment_success,
+        name="payment_success",
+    ),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
