@@ -4,9 +4,7 @@ from dotenv import load_dotenv
 from web3 import Web3
 from decouple import config
 
-# --------------------------------------------------
-# BASE SETTINGS
-# --------------------------------------------------
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,9 +23,6 @@ ALLOWED_HOSTS = [
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# --------------------------------------------------
-# APPLICATIONS
-# --------------------------------------------------
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -45,9 +40,6 @@ INSTALLED_APPS = [
     'cloudinary_storage',
 ]
 
-# --------------------------------------------------
-# MIDDLEWARE
-# --------------------------------------------------
 CSRF_TRUSTED_ORIGINS = [
     "https://doctor-hospital-09tj.onrender.com"
 ]
@@ -67,9 +59,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "doctorspharmacy.urls"
 
-# --------------------------------------------------
-# TEMPLATES
-# --------------------------------------------------
+
 
 TEMPLATES = [
     {
@@ -88,9 +78,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "doctorspharmacy.wsgi.application"
 
-# --------------------------------------------------
-# DATABASE (Render PostgreSQL)
-# --------------------------------------------------
 
 DATABASES = {
     "default": {
@@ -99,31 +86,21 @@ DATABASES = {
     }
 }
 
-# --------------------------------------------------
-# STATIC FILES
-# --------------------------------------------------
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# --------------------------------------------------
-# MEDIA FILES
-# --------------------------------------------------
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# --------------------------------------------------
-# AUTH USER MODEL
-# --------------------------------------------------
+
 
 AUTH_USER_MODEL = "pharmacy.User"
 
-# --------------------------------------------------
-# EMAIL SETTINGS
-# --------------------------------------------------
+
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
@@ -135,9 +112,6 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# --------------------------------------------------
-# LANGUAGE & TIME
-# --------------------------------------------------
 
 LANGUAGE_CODE = "en-us"
 
@@ -146,9 +120,7 @@ TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 
-# --------------------------------------------------
-# BLOCKCHAIN / WEB3
-# --------------------------------------------------
+
 
 BLOCKCHAIN_ENV = config("BLOCKCHAIN_ENV", default="LOCAL")
 
@@ -184,9 +156,7 @@ if bnb_address:
 else:
     BNB_RECEIVER_ADDRESS = None
 
-# --------------------------------------------------
-# DEFAULT FIELD
-# --------------------------------------------------
+
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
