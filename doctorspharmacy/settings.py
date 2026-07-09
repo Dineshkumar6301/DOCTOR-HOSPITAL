@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
       'cloudinary',
     'cloudinary_storage',
+        'django.contrib.humanize',
 ]
 
 CSRF_TRUSTED_ORIGINS = [

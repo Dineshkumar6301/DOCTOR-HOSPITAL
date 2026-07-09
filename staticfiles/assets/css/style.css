@@ -51,6 +51,103 @@
 ====================================================================
 
  ***/
+body {
+  font-family: 'Poppins', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+}
+
+p {
+  font-weight: 400;
+}
+ .process-style-two .pattern-layer div {
+    background-size: contain; /* or cover if you want it to fill */
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+    .process-style-two .pattern-layer div {
+        background-size: contain;
+        width: 100%;
+        height: auto; /* ensures the pattern scales */
+    }
+    
+    .process-style-two .arrow {
+        background-size: contain;
+        width: 50px; /* adjust as needed */
+        height: 50px;
+        margin: 0 auto 20px; /* center arrow */
+    }
+
+    .processing-block h3 {
+        font-size: 16px; /* scale text for mobile */
+    }
+
+    .processing-block figure img {
+        width: 60px; /* scale icons on mobile */
+        height: auto;
+    }
+}
+    /* General Footer Styles */
+    .footer-links a {
+        color: #adb5bd;
+        text-decoration: none;
+    }
+    .footer-links a:hover {
+        color: #17a2b8;
+    }
+
+    /* Responsive */
+    @media (max-width: 767px) {
+        /* Agent Section */
+        .agent-section h3 {
+            font-size: 1.2rem;
+        }
+        .agent-section .support-box h4 {
+            font-size: 1rem;
+        }
+        .subscribe-form input {
+            font-size: 0.9rem;
+            padding: 10px;
+        }
+        .subscribe-form button {
+            font-size: 0.9rem;
+            padding: 10px 16px;
+        }
+
+        /* Footer */
+        .footer-top {
+            text-align: center;
+        }
+        .footer-top h5 {
+            margin-top: 1rem;
+        }
+        .footer-links li {
+            margin-bottom: 6px;
+        }
+        .footer-links a {
+            display: inline-block;
+        }
+    }
+.faq-item {
+    margin-bottom: 30px; /* Increase or decrease as needed */
+}
+
+/* Mobile adjustments */
+@media(max-width: 767px) {
+    .image-block-wrapper {
+        padding-bottom: 40%; /* reserve space for overlapping image */
+    }
+    .image-block-wrapper .image-2 img {
+        width: 55%;
+        top: 10%;
+        left: 8%;
+    }
+}
 * {
   margin:0px;
   padding:0px;
@@ -66,10 +163,7 @@
 ====================================================================
 
  ***/
-body {
-    background-color: white !important;
-    background-image: none !important;
-}
+
 
 body {
   font-size:15px;
@@ -439,16 +533,7 @@ img {
   animation-iteration-count: 1;
 }
 
-
-.clinic-image {
-    width: 120px;
-    height: 120px;
-    object-fit: cover;  /* Keeps aspect ratio without stretching */
-    border: 2px solid #00c4cc;
-    box-shadow: 0 0 8px rgba(0,0,0,0.1);
-}
 /** header-top **/
-
 
 .header-top{
   position: relative;
@@ -1001,22 +1086,6 @@ img {
     top: 10px;
 }
 
-  .profile-image-wrapper {
-    width: 120px;             /* Adjust as needed */
-    height: 120px;
-    overflow: hidden;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.profile-image-wrapper img.clinic-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
 .profile-img {
     width: 100%;
     height: 100%;
@@ -1119,9 +1188,10 @@ img {
   font-size: 40px;
   line-height: 50px;
   cursor: pointer;
-  color:#3786ff;
+  color:#e6f9f7;
   display: none;
 }
+
 
 .mobile-menu{
   position: fixed;
@@ -10759,95 +10829,45 @@ body.mobile-menu-visible .menu-backdrop {
     }
 }
 
-.page-title {
-    position: relative;
-    padding: 80px 0;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    text-align: center;
-    color: #fff;
-    z-index: 1;
+
+
+/* Remove default blue highlight */
+.mobile-menu .menu-box a,
+.mobile-menu .menu-box a:focus,
+.mobile-menu .menu-box a:active {
+    outline: none !important;
+    box-shadow: none !important;
 }
 
-.page-title::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5); 
-    z-index: -1;
+/* Force your color on click/focus */
+.mobile-menu .menu-box a:active,
+.mobile-menu .menu-box a:focus {
+    background: #e6f9f7 !important;
+    color: #2ec4b6 !important;
+    border-radius: 8px;
 }
 
-.page-title h1 {
-    font-size: 42px;
-    font-weight: 700;
-    margin: 0 0 10px;
-    color: #ffffff;
+/* Hover */
+.mobile-menu .menu-box a:hover {
+    background: rgba(230, 249, 247, 0.4) !important;
+    color: #2ec4b6 !important;
 }
 
-.page-breadcrumb {
-    display: inline-block;
-    padding: 0;
+
+body {
     margin: 0;
-    list-style: none;
-    font-size: 16px;
-}
-
-.page-breadcrumb li {
-    display: inline-block;
-    color: #ddd;
-    margin-right: 10px;
-    position: relative;
-}
-
-.page-breadcrumb li a {
-    color: #ffffff;
-    text-decoration: none;
-    transition: color 0.3s ease;
-}
-
-.page-breadcrumb li a:hover {
-    color: #f5b400;
-}
-
-.page-breadcrumb li::after {
-    content: ">";
-    margin-left: 10px;
-    color: #bbb;
-}
-
-.page-breadcrumb li:last-child::after {
-    content: "";
-    margin: 0;
-}
-/* Ensure space below agent-section */
-.agent-section {
-    margin-bottom: 100px;
-}
-
-/* Optional: if any child container causes clipping */
-.agent-section .inner-container {
-    overflow: hidden;
-    position: relative;
-    z-index: 2;
-}
-
-/* Footer should appear fully below agent-section */
-.main-footer {
-    position: relative;
-    z-index: 1;
-    padding-top: 80px;
-}
-
-/* Optional visual fix for pattern background inside footer */
-.footer-top .pattern-layer {
-    z-index: 0;
-    pointer-events: none;
-}
-.top-right ul {
-    list-style: none;
-    display: flex;
-    gap: 20px;   /* adjust space between icons */
     padding: 0;
-    margin: 10;
+}
+
+.boxed_wrapper {
+    margin: 0;
+    padding: 0;
+}
+
+.main-header {
+    margin-top: 0;
+}
+
+.header-top {
+    margin-top: 0;
 }
