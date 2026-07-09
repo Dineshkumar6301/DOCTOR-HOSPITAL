@@ -114,6 +114,12 @@ urlpatterns = [
     path("export/bookings/<str:tab>/<str:filter_type>/csv/", views.export_bookings_csv, name="export_bookings_csv"),
     path("export/bookings/<str:tab>/<str:filter_type>/excel/", views.export_bookings_excel, name="export_bookings_excel"),
     path("video/<int:appointment_id>/", views.video_call, name="video_call"),
+      path(
+        "doctor/<int:doctor_id>/available-slots/",
+        views.get_available_slots,
+        name="available_slots",
+    ),
+    path("razorpay/order/<int:appointment_id>/", views.create_razorpay_order, name="razorpay_order"),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 if settings.DEBUG:

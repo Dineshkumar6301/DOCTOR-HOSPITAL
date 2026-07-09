@@ -1141,10 +1141,14 @@ from django.http import JsonResponse, HttpResponseBadRequest
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+import razorpay
 
 @login_required(login_url='login')
-def book_appointment(request, doctor_id):
+def book_appointment(request, doctor_id, slug=None):
+
     doctor = get_object_or_404(Doctor, id=doctor_id)
+    if slug and slug != doctor.slug:
+        return redirect('book_appointment', id=doctor.id, slug=doctor.slug)
 
     try:
         patient = request.user.patient_profile
@@ -1153,8 +1157,9 @@ def book_appointment(request, doctor_id):
         return redirect('login')
 
     if request.method == 'POST':
-        selected_date = request.GET.get('date')
-        selected_time = request.GET.get('time')
+
+        selected_date = request.POST.get('date')
+        selected_time = request.POST.get('time')
 
         if not selected_date or not selected_time:
             return HttpResponse("Missing date or time", status=400)
@@ -1169,6 +1174,8 @@ def book_appointment(request, doctor_id):
             appointment_datetime=appointment_datetime,
             date=selected_date,
             time=selected_time,
+
+        
             is_new_patient=(request.POST.get('is_new_patient') == 'yes'),
             gender=request.POST.get('gender'),
             patient_name=request.POST.get('patient_name'),
@@ -1181,20 +1188,26 @@ def book_appointment(request, doctor_id):
             zip_code=request.POST.get('zip_code'),
             date_of_birth=request.POST.get('date_of_birth'),
             appointment_notes=request.POST.get('appointment_notes'),
-            appointment_type=request.POST.get('appointment_type'),
-            status=request.POST.get('status'),
-            fee=request.POST.get('fee'),
-            total_amount=request.POST.get('total_amount'),
+
+    
+            appointment_type=request.POST.get('appointment_type', 'consultation'),
+            status='Pending',
+
+            fee=request.POST.get('fee', 0),
+            total_amount=request.POST.get('total_amount', 0),
             payment_status=request.POST.get('payment_status', 'pending'),
+
             appointment_mode=request.POST.get("appointment_mode", "offline"),
         )
 
         return redirect('confirm_appointment', appointment.id)
 
-    selected_date = request.GET.get('date')
-    selected_time = request.GET.get('time')
+    selected_date = request.POST.get('date') or request.GET.get('date')
+    selected_time = request.POST.get('time') or request.GET.get('time')
+
     selected_services_ids = request.GET.getlist('services')
     services = Service.objects.filter(id__in=selected_services_ids)
+
     total_amount = sum(service.price for service in services)
 
     return render(request, 'book_appointment.html', {
@@ -1207,16 +1220,6 @@ def book_appointment(request, doctor_id):
         'doctor_profile': getattr(request.user, 'doctor_profile', None),
         'patient_profile': getattr(request.user, 'patient_profile', None),
     })
-
-
-from django.conf import settings
-
-def check_chain():
-    w3 = settings.web3
-    if w3 and w3.is_connected():
-        return w3.eth.chain_id
-    return None
-
 
 @login_required
 def confirm_appointment(request, appointment_id):
@@ -1231,38 +1234,44 @@ def confirm_appointment(request, appointment_id):
         "confirmation.html",
         {
             "appointment": appointment,
-            "c": settings.BNB_RECEIVER_ADDRESS,
+            "razorpay_key": settings.RAZORPAY_KEY_ID,
         }
     )
 
 
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.urls import reverse
-from django.contrib.auth.decorators import login_required
-from django.conf import settings
-from django.core.mail import send_mail
-from web3 import Web3
-from decimal import Decimal
-import json
-
-from .models import Appointment
-from utils.crypto import inr_to_bnb
-
-
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.urls import reverse
-from django.contrib.auth.decorators import login_required
-from django.conf import settings
-from django.core.mail import send_mail
-from web3 import Web3
-from decimal import Decimal
-import json
-
-from .models import Appointment
-from utils.crypto import inr_to_bnb
-
-
 @login_required
+def create_razorpay_order(request, appointment_id):
+    appointment = get_object_or_404(
+        Appointment,
+        id=appointment_id,
+        patient__user=request.user
+    )
+
+    client = razorpay.Client(
+        auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+    )
+
+    order = client.order.create({
+        "amount": int(appointment.total_amount * 100),
+        "currency": "INR",
+        "payment_capture": 1
+    })
+
+    appointment.razorpay_order_id = order["id"]
+    appointment.save()
+
+    return JsonResponse({
+        "order_id": order["id"],
+        "key": settings.RAZORPAY_KEY_ID,
+        "amount": appointment.total_amount,
+        "name": "Doctor Appointment",
+        "email": appointment.patient_email,
+        "contact": appointment.patient_mobile_number,
+    })
+
+
+
+@csrf_exempt
 def payment_success(request):
     if request.method != "POST":
         return HttpResponseBadRequest("Invalid request")
@@ -1270,71 +1279,40 @@ def payment_success(request):
     appointment = None
 
     try:
-
         data = json.loads(request.body)
-        tx_hash = data.get("tx_hash")
-        appointment_id = data.get("appointment_id")
 
-        if not tx_hash or not appointment_id:
-            return JsonResponse({
-                "status": "failed",
-                "error": "Missing transaction data"
-            })
+        razorpay_payment_id = data.get("razorpay_payment_id")
+        razorpay_order_id = data.get("razorpay_order_id")
+        razorpay_signature = data.get("razorpay_signature")
 
-        appointment = Appointment.objects.get(id=appointment_id)
+        if not razorpay_payment_id or not razorpay_order_id or not razorpay_signature:
+            return JsonResponse({"status": "failed", "error": "Missing Razorpay data"})
+
+        appointment = Appointment.objects.get(razorpay_order_id=razorpay_order_id)
 
         if appointment.payment_status == "paid":
-            return JsonResponse({
-                "status": "success",
-                "redirect_url": reverse("home")
-            })
+            return JsonResponse({"status": "success"})
+        client = razorpay.Client(
+            auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+        )
 
-        if Appointment.objects.filter(
-            blockchain_tx_hash=tx_hash
-        ).exclude(id=appointment.id).exists():
-            return JsonResponse({
-                "status": "failed",
-                "error": "Duplicate transaction"
-            })
-
-        w3 = Web3(Web3.HTTPProvider(settings.WEB3_RPC_URL))
-        if not w3.is_connected():
-            raise Exception("Blockchain not connected")
-
-        if w3.eth.chain_id != settings.CHAIN_ID:
-            raise Exception("Wrong blockchain network")
-
-        receipt = w3.eth.get_transaction_receipt(tx_hash)
-        if not receipt or receipt.status != 1:
-            raise Exception("Transaction failed on blockchain")
-
-        tx = w3.eth.get_transaction(tx_hash)
-
-        if not tx.get("to"):
-            raise Exception("Transaction has no recipient")
-
-        if Web3.to_checksum_address(tx["to"]) != Web3.to_checksum_address(
-            settings.BNB_RECEIVER_ADDRESS
-        ):
-            raise Exception("Payment sent to wrong wallet")
-
-        expected_inr = Decimal(appointment.total_amount)
-        expected_crypto = inr_to_bnb(expected_inr)
-        expected_wei = w3.to_wei(expected_crypto, "ether")
-        paid_wei = tx["value"]
-
-        if settings.BLOCKCHAIN_ENV != "LOCAL":
-            if paid_wei < int(expected_wei * Decimal("0.99")):
-                raise Exception("Insufficient payment amount")
+        client.utility.verify_payment_signature({
+            "razorpay_order_id": razorpay_order_id,
+            "razorpay_payment_id": razorpay_payment_id,
+            "razorpay_signature": razorpay_signature
+        })
 
         appointment.payment_status = "paid"
-        appointment.status = "Confirmed"
-        appointment.blockchain_status = "success"
-        appointment.blockchain_tx_hash = tx_hash
-        appointment.user_wallet_address = tx["from"]
+        appointment.status = "Accepted"
+        appointment.razorpay_payment_id = razorpay_payment_id
+        appointment.razorpay_signature = razorpay_signature
 
+        
+        video_text = ""
         if appointment.appointment_mode == "online":
             appointment.video_link = f"https://meet.jit.si/appointment-{appointment.id}"
+            appointment.zoom_link = appointment.video_link
+            video_text = f"\n\nVideo Call Link:\n{appointment.video_link}"
 
         appointment.save()
 
@@ -1347,7 +1325,8 @@ def payment_success(request):
                 f"Your appointment has been successfully confirmed.\n\n"
                 f"Doctor: Dr. {appointment.doctor.user.get_full_name()}\n"
                 f"Date & Time: {appointment_time}\n"
-                f"Mode: {appointment.appointment_mode.capitalize()}\n\n"
+                f"Mode: {appointment.appointment_mode.capitalize()}"
+                f"{video_text}\n\n"
                 f"Thank you for choosing our service."
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
@@ -1363,34 +1342,39 @@ def payment_success(request):
                 f"Patient Name: {appointment.patient_name}\n"
                 f"Date & Time: {appointment_time}\n"
                 f"Mode: {appointment.appointment_mode.capitalize()}"
+                f"{video_text}\n"
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[appointment.doctor.user.email],
             fail_silently=True,
         )
 
-
-        return JsonResponse({
-            "status": "success",
-            "redirect_url": reverse("home")
-        })
+        return JsonResponse({"status": "success"})
 
     except Appointment.DoesNotExist:
-        return JsonResponse({
-            "status": "failed",
-            "error": "Appointment not found"
-        })
+        return JsonResponse({"status": "failed", "error": "Appointment not found"})
 
     except Exception as e:
         if appointment:
             appointment.payment_status = "failed"
-            appointment.blockchain_status = "failed"
             appointment.save()
 
-        return JsonResponse({
-            "status": "failed",
-            "error": str(e)
-        })
+            send_mail(
+                subject="Payment Failed ❌",
+                message=(
+                    f"Dear {appointment.patient_name},\n\n"
+                    f"Unfortunately, your payment could not be completed.\n\n"
+                    f"Please retry your booking or payment.\n"
+                    f"If the amount was deducted, it will be refunded automatically.\n\n"
+                    f"Thank you."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[appointment.patient_email],
+                fail_silently=True,
+            )
+
+        return JsonResponse({"status": "failed", "error": str(e)})
+
 
 
 @login_required
@@ -1561,24 +1545,35 @@ def doctor_detail_view(request, doctor_id):
         doctor=doctor,
         is_available=True
     ).order_by('day_of_week', 'start_time')
+
     grouped_slots = group_schedule(time_slots)
 
-    experience_data = [
-        {
+    # EXPERIENCE
+    experience_data = []
+    for exp in experiences:
+        duration = calculate_experience_years(exp.from_date, exp.to_date)
+        experience_data.append({
             'hospital_name': exp.hospital_name,
             'designation': exp.designation,
             'from_date': exp.from_date,
             'to_date': exp.to_date,
-            'duration': calculate_experience_years(exp.from_date, exp.to_date)
-        }
-        for exp in experiences
-    ]
+            'duration': duration
+        })
 
+    patient = None
+    doctor_profile = None
+
+    if request.user.is_authenticated:
+        patient = getattr(request.user, 'patient_profile', None)
+        doctor_profile = getattr(request.user, 'doctor_profile', None)
+
+    # APPOINTMENT
     if request.method == 'POST':
         form = AppointmentForm(request.POST)
+
         if form.is_valid():
             if not patient:
-                messages.error(request, "You must be logged in as a patient to book an appointment.")
+                messages.error(request, "Login as patient to book appointment.")
                 return redirect('login')
 
             appointment = form.save(commit=False)
@@ -1586,6 +1581,7 @@ def doctor_detail_view(request, doctor_id):
             appointment.patient = patient
             appointment.save()
             form.save_m2m()
+
             messages.success(request, "Appointment booked successfully!")
             return redirect('appointment_success')
     else:
@@ -1596,18 +1592,69 @@ def doctor_detail_view(request, doctor_id):
 
     return render(request, 'doctor_detail.html', {
         'doctor': doctor,
-        'logged_in_doctor': logged_in_doctor,
         'services': services,
         'form': form,
         'experience_data': experience_data,
         'grouped_slots': grouped_slots,
         'patient': patient,
-        'blood_bank': blood_bank,
-        'clinics': clinics,
+        'doctor_profile': doctor_profile,
         'reviews': reviews,
         'total_reviews': total_reviews,
         'average_rating': round(average_rating, 2),
     })
+
+
+def get_available_slots(request, doctor_id):
+
+    doctor = get_object_or_404(Doctor, id=doctor_id)
+
+    selected_date = request.GET.get("date")
+
+    if not selected_date:
+        return JsonResponse({"slots": []})
+
+    date_obj = datetime.strptime(selected_date, "%Y-%m-%d")
+    weekday = date_obj.strftime("%A")
+
+    # ✅ Fetch all slots
+    slots = TimeSlot.objects.filter(
+        doctor=doctor,
+        day_of_week=weekday,
+        is_available=True
+    )
+
+    # 🔥 FETCH ALL BOOKED TIMES ONCE (KEY FIX)
+    booked_times = set(
+        Appointment.objects.filter(
+            doctor=doctor,
+            appointment_datetime__date=date_obj.date(),
+            status__in=["Pending", "Accepted"]
+        ).values_list("appointment_datetime__time", flat=True)
+    )
+
+    available_slots = []
+
+    for slot in slots:
+
+        start = datetime.combine(date_obj.date(), slot.start_time)
+        end = datetime.combine(date_obj.date(), slot.end_time)
+
+        current = start
+
+        while current < end:
+
+            next_time = current + timedelta(minutes=15)
+
+            if next_time > end:
+                break
+
+            # ✅ CHECK IN MEMORY (NO DB HIT)
+            if current.time() not in booked_times:
+                available_slots.append(current.strftime("%H:%M"))
+
+            current = next_time
+
+    return JsonResponse({"slots": available_slots})
 
 def doctor_reviews(request, doctor_id):
     doctor = get_object_or_404(Doctor, id=doctor_id)
