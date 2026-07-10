@@ -18,6 +18,8 @@ ALLOWED_HOSTS = [
     "vaidyakar.com",
     "localhost",
     "127.0.0.1",
+    "www.vaidyakar.com",
+    
 
     
 ]
