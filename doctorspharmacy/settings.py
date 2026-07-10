@@ -15,10 +15,10 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "doctor-hospital-09tj.onrender.com",
+    "vaidyakar.com"
     "localhost",
     "127.0.0.1",
-    "doctorpro02.duckdns.org",
+
     
 ]
 
@@ -29,7 +29,7 @@ INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
-    "django.contrib.sessions",
+    "django.contrib.sessions",,
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
@@ -80,6 +80,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "doctorspharmacy.wsgi.application"
 
+import os
+from pathlib import Path
+
 import dj_database_url
 from decouple import config
 
@@ -88,7 +91,6 @@ DATABASES = {
         config("DATABASE_URL")
     )
 }
-
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
