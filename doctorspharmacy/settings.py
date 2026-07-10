@@ -15,7 +15,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "vaidyakar.com"
+    "vaidyakar.com",
     "localhost",
     "127.0.0.1",
 
@@ -42,8 +42,11 @@ INSTALLED_APPS = [
         'django.contrib.humanize',
 ]
 
+
 CSRF_TRUSTED_ORIGINS = [
-    "https://doctor-hospital-09tj.onrender.com"
+    "https://vaidyakar.com",
+    "https://www.vaidyakar.com",
+    "https://doctor-hospital-09tj.onrender.com",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
