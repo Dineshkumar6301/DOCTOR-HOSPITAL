@@ -19,9 +19,6 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "www.vaidyakar.com",
-    
-
-    
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
