@@ -409,52 +409,93 @@ body {
 
         </section>
 
-        <section class="process-style-two bg-color-3">
-            <div class="pattern-layer">
-                <div class="pattern-1" style="background-image: url(/static/assets/images/shape/shape-39.png);"></div>
-                <div class="pattern-2" style="background-image: url(/static/assets/images/shape/shape-40.png);"></div>
-                <div class="pattern-3" style="background-image: url(/static/assets/images/shape/shape-41.png);"></div>
-                <div class="pattern-4" style="background-image: url(/static/assets/images/shape/shape-42.png);"></div>
+        <section class="process-style-two bg-color-3 healthcare-solutions">
+
+            <div class="pattern-layer healthcare-pattern">
+                <div class="pattern-1"
+                    style="background-image: url('/static/assets/images/shape/shape-39.png');">
+                </div>
+
+                <div class="pattern-2"
+                    style="background-image: url('/static/assets/images/shape/shape-40.png');">
+                </div>
+
+                <div class="pattern-3"
+                    style="background-image: url('/static/assets/images/shape/shape-41.png');">
+                </div>
+
+                <div class="pattern-4"
+                    style="background-image: url('/static/assets/images/shape/shape-42.png');">
+                </div>
             </div>
-            <div class="container">
-                <h2 class="section-title">Complete Healthcare Solutions</h2>
+
+            <div class="container healthcare-content">
+
+                <h2 class="section-title">
+                    Complete Healthcare Solutions
+                </h2>
+
                 <p class="section-subtitle">
                     Everything you need for your healthcare journey, all in one place
                 </p>
 
                 <div class="services-grid">
 
-                    <!-- Find Doctors -->
+                    <!-- FIND DOCTORS -->
+
                     <div class="service-card">
+
                         <div class="icon">
                             <i class="fas fa-user-md"></i>
                         </div>
+
                         <h3>Find Doctors</h3>
+
                         <p>
                             Search from verified doctors and access their details instantly.
                         </p>
-                        <a href="{% url 'doctor_list' %}" class="explore-link">
-                            Explore <span>→</span>
+
+                        <a href="{% url 'doctor_list' %}"
+                        class="explore-link service-navigation-link">
+
+                            Explore
+
+                            <span>→</span>
+
                         </a>
+
                     </div>
 
-                    <!-- Clinics -->
+
+                    <!-- CLINICS -->
+
                     <div class="service-card">
+
                         <div class="icon">
                             <i class="fas fa-clinic-medical"></i>
                         </div>
+
                         <h3>Clinics</h3>
+
                         <p>
                             Discover trusted clinics near you with seamless connectivity.
                         </p>
-                        <a href="{% url 'Clinic_list' %}" class="explore-link">
-                            Explore <span>→</span>
+
+                        <a href="{% url 'Clinic_list' %}"
+                        class="explore-link service-navigation-link">
+
+                            Explore
+
+                            <span>→</span>
+
                         </a>
+
                     </div>
 
                 </div>
+
             </div>
-        
+
         </section>
         <!-- about-style-two -->
         <section class="about-style-two">
@@ -1250,29 +1291,61 @@ document.addEventListener("DOMContentLoaded", loadReviews);
 
   elements.forEach((el) => observer.observe(el));
 
-  // Hover effect (cards auto-detect)
   const cards = document.querySelectorAll(
-    ".service-card, .feature-box, .doctor-card"
-  );
+    ".feature-box, .doctor-card"
+);
 
-  cards.forEach((card) => {
+cards.forEach((card) => {
+
     card.style.transition = "all 0.3s ease";
 
     card.addEventListener("mouseenter", () => {
-      card.style.transform = "translateY(-10px)";
-      card.style.boxShadow = "0 15px 40px rgba(0,0,0,0.08)";
+
+        card.style.transform = "translateY(-10px)";
+
+        card.style.boxShadow =
+            "0 15px 40px rgba(0,0,0,0.08)";
+
     });
 
     card.addEventListener("mouseleave", () => {
-      card.style.transform = "translateY(0)";
-      card.style.boxShadow = "none";
-    });
-  });
 
+        card.style.transform = "translateY(0)";
+
+        card.style.boxShadow = "none";
+
+    });
+
+});
   // Smooth scroll (global)
   document.documentElement.style.scrollBehavior = "smooth";
 
 })();
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const serviceLinks = document.querySelectorAll(
+        ".service-navigation-link"
+    );
+
+    serviceLinks.forEach(function (link) {
+
+        link.addEventListener("click", function (event) {
+
+            event.stopPropagation();
+
+            const targetUrl = this.getAttribute("href");
+
+            if (targetUrl) {
+                window.location.assign(targetUrl);
+            }
+
+        });
+
+    });
+
+});
+
 </script>
  <script src="{% static 'assets/js/jquery.js' %}"></script>
         <script src="{% static 'assets/js/popper.min.js' %}"></script>

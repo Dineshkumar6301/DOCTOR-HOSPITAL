@@ -576,3 +576,69 @@ section[style*="background:#f8fbfb"] .container {
 .section-subtitle {
     margin-bottom: 20px !important;
 }
+
+
+/* =====================================================
+   HEALTHCARE SOLUTIONS CLICK FIX
+===================================================== */
+
+.healthcare-solutions {
+    position: relative !important;
+}
+
+.healthcare-solutions .healthcare-pattern {
+    pointer-events: none !important;
+    z-index: 0 !important;
+}
+
+.healthcare-solutions .healthcare-pattern *,
+.healthcare-solutions .pattern-layer *,
+.healthcare-solutions .pattern-layer::before,
+.healthcare-solutions .pattern-layer::after {
+    pointer-events: none !important;
+}
+
+.healthcare-content {
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.healthcare-solutions .services-grid {
+    position: relative !important;
+    z-index: 20 !important;
+}
+
+.healthcare-solutions .service-card {
+    position: relative !important;
+    z-index: 30 !important;
+}
+
+.healthcare-solutions .service-card::before,
+.healthcare-solutions .service-card::after {
+    pointer-events: none !important;
+}
+
+.healthcare-solutions .service-card .icon,
+.healthcare-solutions .service-card h3,
+.healthcare-solutions .service-card p {
+    position: relative;
+    z-index: 1;
+}
+
+.healthcare-solutions .service-navigation-link {
+    position: relative !important;
+    z-index: 99999 !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+
+    pointer-events: auto !important;
+    cursor: pointer !important;
+
+    touch-action: manipulation !important;
+}
+
+.healthcare-solutions .service-navigation-link span {
+    pointer-events: none !important;
+}
